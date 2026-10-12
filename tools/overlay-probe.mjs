@@ -253,12 +253,13 @@ function clickTriggers(list) {
 class Cdp {
   constructor(ws) {
     this.ws = ws; this.n = 0; this.waiters = new Map(); this.events = [];
+    this.net = [];   // Network.* 另存一份：waitEvent 会按名字摘走 events，那一格不该把取数失败的历史一起摘走
     ws.addEventListener("message", (e) => {
       const msg = JSON.parse(e.data);
       if (msg.id && this.waiters.has(msg.id)) {
         const w = this.waiters.get(msg.id); this.waiters.delete(msg.id);
         msg.error ? w.bad(new Error(msg.error.message)) : w.ok(msg.result);
-      } else if (msg.method) this.events.push(msg);
+      } else if (msg.method) { this.events.push(msg); if (msg.method.startsWith("Network.")) this.net.push(msg); }
     });
   }
   static async connect(url) {
@@ -281,6 +282,22 @@ class Cdp {
     return Promise.race([send, new Promise((resolve) =>
       setTimeout(() => { this.waiters.delete(id); resolve(method === "Runtime.evaluate" ? null
         : { __timeout: true }); }, ms))]);
+  }
+  // #161：浮层的内容有时靠页里自己的一次取数才挂载（DocSearch 打 Algolia 那一跳就是这一形）。
+  // 那一跳断了的时候，「没有新的面」既可以是「这站没有浮层」也可以是「浮层的 feeder 没回数」，
+  // 旧版两个读法印在同一行。按「没读到不并入没有」的既有纪律，这一格单独成档。
+  // 只认 Fetch／XHR 两型：Script 那一型在真站上多半是站家的统计脚本，收进来会把每一站都判成断。
+  failedFeeds(from) {
+    const url = new Map();
+    const out = [];
+    for (const e of this.net.slice(from)) {
+      const q = e.params || {};
+      if (e.method === "Network.requestWillBeSent") url.set(q.requestId, (q.request || {}).url || "?");
+      else if (e.method === "Network.loadingFailed" && /^(Fetch|XHR)$/.test(q.type || ""))
+        out.push(q.type + ":" + String(url.get(q.requestId) || "?").slice(0, 64) +
+          "(" + (q.errorText || q.reason || "?") + ")");
+    }
+    return out;
   }
   async waitEvent(name, ms) {
     const t0 = Date.now();
@@ -495,9 +512,11 @@ async function probeSite(c, base, tag, url, probe) {
   let ovKeys = new Set(ovs.map(overlayKey));
   const rows = [];
   const unread = [];
+  let firedN = 0;   // 真事件发出去了几次：一次都没发出去的「零新面」不能读成「这站没开」
   let triggers = keyTriggers();
   const clicks = (await c.value(CLICK_PROBE.replace("__N__", String(MAX_CLICKS)))) || [];
   triggers = triggers.concat(clickTriggers(clicks));
+  const netFrom = c.net.length;   // 只数触发器之后的取数，页头那批脚本／样式不算进来
   for (const t of triggers) {
     const wasOv = ovKeys;
     const was = (await lightFaces(c)) || restSnap;   // 就在按之前现读一遍，别拿上一格的收尾冒充
@@ -514,6 +533,7 @@ async function probeSite(c, base, tag, url, probe) {
       if (now && appeared(was, now).length) break;
     }
     if (!fired) continue;
+    firedN++;
     if (!now) continue;   // 这一格没读到，不算"没出现浮层"
 
     // #73：「真事件之后没有新的面」有两种形状——站点根本没开，和开了但这把尺子看不见
@@ -589,7 +609,7 @@ async function probeSite(c, base, tag, url, probe) {
       ov: restOv.length, ovGlass: restOv.filter((o) => o.glass).length },
     candidates: clicks.map((t) => t.name.slice(0, 28)),   // 空表＝这一站没有点得着的浮层触发器，
                                                           // 和"点了没反应"是两件事，要分开印
-    unread, rows };
+    unread, rows, fired: firedN, feeds: c.failedFeeds(netFrom) };
 }
 
 // —— 正控制：这条判据必须能报"没穿上"，否则它的绿不能当证据 ——————————
@@ -640,6 +660,19 @@ function selftest() {
         und: [{ t: "div", i: "", c: "", b: "rgba(13, 17, 23, 0.4)", own: false }] },
       { ours: false, risk: false, unknown: true }],
   ];
+  const evCases = [
+    ["事件分档 L（零新面＋那一趟有取数没回数 ⇒ 必须读成 feeder 断，不能读成本站没开）",
+      { rows: [], fired: 3, unread: [], feeds: ["Fetch:https://x.algolia.net/1/query(net::ERR_FAILED)"] },
+      "feeder 断"],
+    ["事件分档 M（零新面、取数全回数、触发器也发出去了 ⇒ 这才叫本站没开）",
+      { rows: [], fired: 3, unread: [], feeds: [] }, "本站没开"],
+    ["事件分档 N（有面 ⇒ 这一格不开火，读到数的站不能被分档）",
+      { rows: [{ navigated: false }], fired: 3, unread: [], feeds: ["Fetch:?"] }, ""],
+    ["事件分档 O（一格触发器都没发出去 ⇒ 不能读成本站没开）",
+      { rows: [], fired: 0, unread: [], feeds: [] }, "没试到触发器"],
+    ["事件分档 P（取数没回数优先于没读到：两个都在时按 feeder 断办）",
+      { rows: [], fired: 2, unread: ["key:?"], feeds: ["XHR:?(err)"] }, "feeder 断"],
+  ];
   let bad = 0;
   for (const [name, rs, want] of covCases) {
     const got = coverage(rs);
@@ -655,6 +688,14 @@ function selftest() {
     console.log(`  ${ok ? "√" : "×"} ${name}：ours=${got.ours} risk=${got.risk} unknown=${got.unknown}` +
       `（要 ${want.ours}/${want.risk}/${want.unknown}）`);
   }
+  for (const [name, r, want] of evCases) {
+    const got = eventBucket(r);
+    if (got !== want) bad++;
+    console.log(`  ${got === want ? "√" : "×"} ${name}：读到「${got || "不分档"}」（要「${want || "不分档"}」）`);
+  }
+  console.log("  读法（事件分档）：L 不开火＝把断了的取数通道读成「这站没有浮层」；M 开了火＝真没开的站被推给通道；" +
+    "N 开了火＝明明读到面的站也被贴分档；O 开了火＝事件根本没发出去却判「本站没开」；" +
+    "P 不开火＝两种缺格同时在场时丢了更硬的那一个。");
   console.log(`  读法：A 不开火＝glass 那位断了；B 不开火＝"漏判"这一格结构上永远不红，` +
     `普查报"0 处撞色"不算证据；C 开了火＝把深色字也当撞色；D 开了火＝穿上玻璃的也被判风险；` +
     `E 开了火＝0 字的面也进风险表；F 开了火＝只看墨不看底，站点自家深色 hero 的白字被当成撞色` +
@@ -663,6 +704,15 @@ function selftest() {
     `I 不开火＝覆盖缺站还往退出码上落 0（2026-10-06 真踩过：7 站回 2 站、EXIT=0）；` +
     `J 开了火＝全都回数也被判缺；K 开了火＝名册打空了还报"跑完了"`);
   return bad ? 1 : 0;
+}
+
+// 事件档「零新面」的分档：读到面就不分档；没面时分四种，读的那一格不许在「没回数」和「没有」之间换。
+function eventBucket(r) {
+  if ((r.rows || []).some((x) => !x.navigated)) return "";
+  if ((r.feeds || []).length) return "feeder 断";
+  if (!r.fired) return "没试到触发器";
+  if ((r.unread || []).length) return "没读到";
+  return "本站没开";
 }
 
 function printSite(r) {
@@ -677,9 +727,14 @@ function printSite(r) {
   const nav = r.rows.filter((x) => x.navigated);
   if (r.unread.length) console.log(`  没读到（页址回不来）${r.unread.length} 格：${r.unread.join(" / ")}` +
     "——这些格不作证，站点有没有浮层都没说");
-  if (!real.length) console.log("  真事件之后：没有新的 fixed 面" +
-    (nav.length ? `（有 ${nav.length} 次点了跳走）` : "") +
-    (r.unread.length ? `（另有 ${r.unread.length} 次没读到，见上一行）` : ""));
+  if (!real.length) {
+    const bk = eventBucket(r);
+    console.log("  真事件之后：没有新的 fixed 面｜这一格按「" + bk + "」办" +
+      (bk === "feeder 断" ? "（浮层内容靠的那一跳没回数：" + r.feeds.slice(0, 3).join(" / ") +
+        "）——不算「这站没有浮层」" : "") +
+      (nav.length ? `（有 ${nav.length} 次点了跳走）` : "") +
+      (r.unread.length ? `（另有 ${r.unread.length} 次没读到，见上一行）` : ""));
+  }
   for (const f of real) {
     console.log(`  ${f.ours ? "穿上玻璃" : "没穿"}${f.risk ? "｜浅字撞底" : ""}  [${f.kind}]  ${f.via}  ` +
       `${f.pos}${f.role ? "/" + f.role : ""}${f.modal ? "/modal" : ""} ${f.w}x${f.h}  ` +
@@ -758,6 +813,7 @@ async function main() {
     const page = list.find((p) => p.id === targetId) || list[0];
     const c = await Cdp.connect(page.webSocketDebuggerUrl);
     await c.cmd("Runtime.enable"); await c.cmd("Page.enable");
+    await c.cmd("Network.enable");   // 不开这个域，failedFeeds 没得读
     for (const [tag, url] of sites()) {
       let r;
       try { r = await probeSite(c, `http://127.0.0.1:${PORT}/s/`, tag, url, probe); }
