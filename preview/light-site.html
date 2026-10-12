@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>浅色站点夹具（站点自己涂白底黑字）</title>
+<style>
+  /* 暗色夹具的镜像，而且更常见：绝大多数站点默认就是白底，
+     用户把面板切到"粉紫（强制夜晚）"时，我们强制的浅紫标题压在白底上同样读不动。 */
+  body { margin: 0; padding: 24px; background: #ffffff; color: #1a1a1a;
+         font-family: system-ui, sans-serif; }
+  .panel { background: #f4f4f6; padding: 16px; margin-block: 12px; }
+  a { color: #0b5cad; }
+  pre { background: #f0f0f3; color: #6b2fa0; padding: 12px; overflow: auto; }
+</style>
+<link rel="stylesheet" href="skin.css">
+</head>
+<body>
+<h1>浅色站点：夜晚档压上来时该发生什么</h1>
+<p>这一页的 <code>body</code> 背景由站点自己设成 <code>#ffffff</code>。
+默认（强涂关）时样式表只画 <code>html</code>，被站点自己的白底盖住；
+打开 <code>--kPaint:1</code> 才会盖住它。</p>
+<p>链接 <a href="#">仍然要能看见</a>，代码块不该被换字色：</p>
+<pre>const kawaii = true; // 高亮 token 属于站点</pre>
+<div class="panel"><h3>面板</h3><p>阴影与圆角可以加，颜色仍归站点。</p></div>
+<button>按钮</button> <input type="checkbox" checked> <input type="text" value="输入框">
+</body>
+</html>

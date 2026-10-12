@@ -1,0 +1,22 @@
+# 出图与探针产物：tools/shoot.sh、tools/spot-check.sh 每次重跑都会重新生成
+shots/
+preview/.build/
+
+# 一次性探针脚本与草稿，不在任何判据里（tools/ 不引用它们）
+scratch/
+notes/
+
+# Python 缓存
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# 反代抓取的真实页面缓存（默认就在 /tmp/ks-proxy-cache，可用 KS_PROXY_CACHE_DIR 改）
+ks-proxy-cache/
+.proxy-cache/
+
+# 编辑器与系统
+.DS_Store
+.idea/
+.vscode/
+*.swp

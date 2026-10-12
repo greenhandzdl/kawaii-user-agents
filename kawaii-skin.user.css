@@ -1,0 +1,1154 @@
+/* ==UserStyle==
+@name           Kawaii Skin · 樱花与星夜
+@namespace      github.com/greenhandzdl/kawaii-browser-skin
+@author         greenhandzdl
+@version        1.0.0
+@description    全站可爱换肤：白天粉白、夜晚粉紫，跟随系统或手动强制
+@license        MIT
+@preprocessor   default
+
+@var select   kScheme  "主题 Theme" {
+  "auto:自动（跟随系统的明暗）*": "light dark",
+  "day:粉白（强制白天）": "light",
+  "night:粉紫（强制夜晚）": "dark"
+}
+@var select   kVeil    "叠色膜强度" {
+  "light:淡": "4%",
+  "medium:中*": "7%",
+  "strong:浓": "10%"
+}
+@var select   kBtn     "按钮饱满度（明暗两档各自定浓度）" {
+  "soft:淡": "0.6",
+  "medium:中*": "1",
+  "rich:浓": "1.5"
+}
+@var checkbox kPaint    "强涂页面底色（会盖掉站点自己的背景）" 0
+@var checkbox kRound    "圆角" 1
+@var checkbox kGlass    "浮动面液态玻璃（弹窗/菜单/浮层透出底下的粉）" 1
+@var checkbox kShadow   "软阴影" 1
+@var checkbox kHeads    "糖果色标题" 1
+@var checkbox kHalo     "标题垫底／链接描边（撞色时给字找依托）" 1
+@var select   kFont     "字体 Font" {
+  "round:本机圆体（不发网络请求）*": "Yuanti SC, Hiragino Maru Gothic ProN, Arial Rounded MT Bold, PingFang SC, Hiragino Sans GB, Microsoft YaHei UI, system-ui, sans-serif",
+  "site:站点原字体": "revert"
+}
+@var checkbox kSparkle  "糖果滚动条 / 选区 / 焦点环" 1
+@var checkbox kMotion   "hover 微弹" 1
+@var text     kEmoji    "大标题前缀（填 none 关闭）" "🌸 "
+@var color    kAccent   "主强调色" #d4508f
+==/UserStyle== */
+
+@-moz-document url-prefix("http"), url-prefix("file") {
+
+  /* ---------- 1. 单一真源：色值只写一次 light-dark(白天, 夜晚)，分支交给 color-scheme ---------- */
+  :root {
+    color-scheme: var(--kScheme, light dark) !important;
+
+    --ks-sakura: var(--kAccent, #d4508f);
+
+    --ks-canvas-1: light-dark(#fff6fa, #21111e);
+    --ks-canvas-2: light-dark(#ffeaf3, #3a1b2c);
+    --ks-canvas-3: light-dark(#ffe9f1, #40162e);
+
+    --ks-ink-1: light-dark(#3a2b3e, #f4eaff);
+    --ks-ink-3: light-dark(#7c6883, #a594b8);
+
+    --ks-head: light-dark(#8c1f4d, #eab6ff);
+    --ks-link: light-dark(#96204f, #f3a9e6);
+    --ks-border: light-dark(#f7c3d8, #4b2f6b);
+    /* 表格线要承担"分行"这件事，比装饰边框重一档；再深就不 kawaii 了 */
+    --ks-rule: light-dark(#efb4cd, #553a72);
+    --ks-neutral: light-dark(#c9c4c8, #4a4256);
+    --ks-petal: light-dark(#ff7ab8, #b48aff);
+    /* 按钮自己的底：不能借用 canvas 系列。实测 canvas-2 (#ffeaf3) 与底衬渐变的两个端点
+       (#fff6fa / #ffe9f1) 在三通道上差 (0,1,2)——白天档按钮和它身后的页面同色，
+       控件看不出来；夜晚 canvas-2 (#3a1b2c，夜枝从紫挑到玫瑰：让玻璃在自声明深色的站点上也衬着粉) 对页面 (#21111e) 也只抬一点。
+       所以这里从 --ks-petal 混出来，并且**明暗两档各写一个浓度**。
+       两档哪个更浓不是审美直觉定的，是可读上限算出来的（check-contrast.py 扫面板每一档 ×
+       最浓膜档那一格）：白天 ink-1 是深墨、底是浅粉，混进 petal 只会把底压暗、对比下降得慢，
+       出厂比例到 42.7% 仍 ≥4.5；夜晚 ink-1 是浅墨、而 petal (#b48aff) 比 canvas-2 更亮，
+       混得越多底越亮，出厂比例过 27% 后最浓那一档就掉到 AA 以下。方向正好相反，
+       所以"夜晚要更重才看得出来"这句在这里不成立——夜晚的重被浅墨先吃掉了。
+       下限同样量过：白天混到 13% 以下就会撞进 canvas-3 (#ffe9f1)，面板最淡那档
+       (kBtn=0.6) 会把按钮还原成"和页面同色"，所以两档都取在 0.6× 之后仍离三个 canvas 都超过
+       容差的位置上。 */
+    --ks-btn: light-dark(
+        color-mix(in srgb, var(--ks-petal) calc(var(--kBtn, 1) * 34%), var(--ks-canvas-1)),
+        color-mix(in srgb, var(--ks-petal) calc(var(--kBtn, 1) * 24%), var(--ks-canvas-2)));
+    /* 模态遮罩专用：两档都要比自家底更暗，所以不能拿 ink 系列凑——夜晚档的 ink 是浅色，
+       当遮罩会把页面洗成一片白雾 */
+    --ks-scrim: light-dark(#3a2b3e, #0d0716);
+
+    --ks-veil-a: var(--kVeil, 7%);
+    --ks-paint-a: calc(var(--kPaint, 0) * 100%);
+
+    /* 底衬那面渐变只写一遍：html 和 body 两档要用同一张，两处不一致时接缝会露出来。
+       值里全是 var()，所以它落在谁身上就在谁那一档解（light-dark 按元素就近解析）。 */
+    --ks-ground: linear-gradient(160deg, var(--ks-canvas-2),
+                                 var(--ks-canvas-1) 55%, var(--ks-canvas-3));
+
+    --ks-r-sm: 10px;
+    --ks-r-md: 16px;
+    --ks-r-lg: 24px;
+    --ks-pace: 180ms;
+
+    /* 玻璃面的虚焦半径由开关调制：kGlass=0 时 blur 归 0、saturate 归 100%，
+       同一批选择器原地降级成"实心粉面 + 不透明"——透明度那格住在 §4c 的声明里，
+       因为期望值要从那条声明现推（判据不抄百分比）。
+       降级档（系统要求少用透明、打印）只改这一格：它们要撤的是"底下内容糊成一片"
+       那件事，面板该不该半透明是配色问题、不是可达性问题。 */
+    --ks-glass-blur: blur(calc(var(--kGlass, 1) * 16px))
+                     saturate(calc(100% + var(--kGlass, 1) * 30%));
+
+    /* 圆体全靠本机已装的字体，不 @import 远程 webfont：用户样式表里挂远程字体
+       等于在每个站点都发一次外部请求，为了字形好看交出 IP 不太值。缺字体时自动往后落。 */
+    --ks-stack: Yuanti SC, Hiragino Maru Gothic ProN, Arial Rounded MT Bold,
+                PingFang SC, Hiragino Sans GB, Microsoft YaHei UI,
+                system-ui, sans-serif;
+
+    caret-color: var(--ks-sakura);
+  }
+
+  /* 只铺 html/body 两层：子元素靠继承拿到圆体，而 pre/code/input 自己有声明
+     （UA 的等宽、站点写死的编辑器字体）就赢过继承——所以代码块不会被我们扳圆。
+     反过来说，站点在具体 class 上写死的字体也不硬抢，这是保守层的既有取舍。 */
+  html, body {
+    /* 面板里选"站点原字体"时值是 revert —— 实测带 !important 的 revert 会退回
+       站点自己那条 font-family，这就是字体方面的逃生阀 */
+    font-family: var(--kFont, var(--ks-stack)) !important;
+  }
+
+  /* ---------- 2. 底衬：只画 html —— 站点 body 不透明时它盖住我们，谁也不破 ---------- */
+  html {
+    background-color: var(--ks-canvas-1) !important;
+    background-image: var(--ks-ground) !important;
+    background-attachment: fixed !important;
+  }
+
+  /* 底衬补一格"最低优先"的 body 档：:where() 把特异度压到 0，站点在 body 上写过
+     任何一条背景声明都赢得过我们，只有它压根没画的时候才轮到我们。
+     为什么要这一格：light-dark() 是按元素就近解析的，站点在 body 上声明 color-scheme: dark
+     而我们的底衬钉在 html（面板档）时，同一页会混两档——实测 css-tricks 白天档里
+     37 个卡片标题有 8 个是"夜晚档的浅紫字压在白天档的粉底"上，量到 1.57:1。
+     补了这格之后底色跟着 body 的那一档解，和它上面那些字同档（同两处 9.6:1）。
+     代价写进 README：站点自己表过态的地方，面板的强制档让给它。这条只管到画布——
+     §3 的膜解在 html::before 上、§4c 那一族自己钉了档，两处都跟着面板走。 */
+  :where(body) {
+    background-color: var(--ks-canvas-1);
+    background-image: var(--ks-ground);
+    background-attachment: fixed;
+  }
+
+  /* 强涂走 background-image（画在站点自己的 background-color 之上）：
+     关掉时 alpha 归 0 即完全惰性，站点底色照常；打开才盖住它。
+     这一层在常用站上到底盖住多少，是六站两档各拍一遍数出来的（1280×1500、3px 网格、
+     与同档哨兵档比，判"这块底被我们涂了没有"）：整幅接管 runoob 19.5%、w3schools 17.0%、
+     github 首页 7.9%、css-tricks 那篇文章 35.2%、docs.github 52.1%、MDN 85.5%——
+     跨度一个数量级，所以"风格统一"不可能由这一层负责，它只在站点没自己涂底的地方显形；
+     真正处处在场的是 §3 那层膜（它碰 100% 的像素）。分带也各自成形状：首页是页眉 44.8%
+     而 y>700 只剩 0.2–0.5%（营销页下方大片自涂），MDN 反过来是页眉 0.2%、下半 100%。
+     这两格的对账还回答了一个悬着的问题：站家自涂的底上那些像素相对裸页的变化**就是这层膜**，
+     不是画布——按坐标插值膜色之后各格的拟合率（残差 ≤6 的点占比）是
+     docs.github 两档 100%、github 首页两档 100%、w3schools 两档 98%、runoob 两档 95%、
+     MDN 白天 0%；除 MDN 白天那格外 α 中位 0.067–0.081，其中只有 runoob/白天 越出 0.067–0.073 这一带（0.081）。
+     MDN 白天与 css-tricks 那 17% 的残余这一轮没归因。 */
+  body {
+    background-image: linear-gradient(
+      color-mix(in srgb, var(--ks-canvas-1) var(--ks-paint-a), transparent),
+      color-mix(in srgb, var(--ks-canvas-3) var(--ks-paint-a), transparent)
+    ) !important;
+  }
+
+  /* ---------- 3. 叠色膜：一整片可关的渐变，不碰任何站点结构 ---------- */
+  /* 这一层是过合成在**一切**之上的（fixed + inset:0 + z-index 顶格），连字形也一起洗，
+     所以它的账要和 §2 的画布分开记。GitHub 首页白天档实测（1280×1500，3px 网格采样）：
+     膜碰到 100% 的像素，而画布 token 只盖住 7.79%（149,657／1,920,000，逐通道判不等；
+     页眉带 44.8%、首屏 12.6%、y>700 只剩 0.2–0.5%——营销页的下方大片是站点自涂的板）。
+     强度这笔账要按**建模到哪一层**来引用。把 `arm ≈ bare·(1−α)+膜色·α` 用逐格最小二乘
+     解在六站两档上跑（1280×1500、3px 网格、只取"哨兵没动"的那批点）：
+     ① 膜色取**一个常数**时，只有白天档的 docs/home 两格全拟合（≤6 占 100%，α 0.073/0.074），
+     其余各档 64–98%，而且同一张图里 α 沿 y 走——home/night 的分带读数是
+     0.051／0.030／0.008／0.021／0.058（y 0–300／300–600／600–900／900–1200／1200–1500）。
+     ② 膜色**按坐标插值**（下面那条 linear-gradient 有三截色标，α 处处等于 --ks-veil-a，
+     沿轴变的是膜色；170deg 的轴长 |W·sinθ|+|H·cosθ|，t 由点投影算）之后，同一格抹平成
+     0.068–0.077，night 档拟合率升到 95–100%，五站两档里除 runoob/白天（0.081）外，α 中位收进 **0.067–0.073**
+     ——出厂 7% 是被像素复现的，但只有这一版模型复现得出来。版面位移不是残差的来源：
+     ±1px 邻域重解只救回 0–3%。
+     ③ 例外是 mdn：它"哨兵没动"的点只剩页眉带（day 31,064 个全在 y<600），两种模型都
+     ≤6 占 0%（常数 α≈1.04、插值 2.7–3.9，α>1 说明模型在这里连方向都是反的）。
+     ±1px 邻域重解在这格救回 0%——所以那批点的差不是 1px 级的位移，成因这一轮没量出来，
+     不许拿它引用 α，也不许给它编归因。
+     两个口径别混：走 `ImageChops.difference(...).convert("L")` 量接管面积只有 7.70%，
+     因为通道一增一减在亮度里互相抵掉。
+     ④ 出厂停在 7% 这件事记在这儿（2026-10-01 定，#28）：A/B 是同一档把 --kVeil 从 7%
+     设到 0% 重拍同一页量的（scratch/ab-veil.py）——站点自家墨纸上的配对因此掉
+     0.42／0.77／0.20 个对比点（docs.github 夜 4.51→4.09、MDN 夜 7.58→6.81、
+     runoob 夜 3.71→3.51）。六站两档里只有 docs.github 那一格被这层膜从 AA 线上推到线下，
+     另外两格关掉膜也本来就不达标。这一层买的就是"底下衬一层粉"这句设计意图本身，
+     所以出厂留 7%，把降档交给面板的 @var：最淡那档是 4%（这一档的代价没单独 A/B 过，
+     上面三个数是 7% 与 0% 之间量的），要 0% 得手改 --kVeil。
+     这九个数不在任何闸门的判定里：check-contrast 枚举的是我们自己的 token 配对，
+     抽检闸门对站家墨纸"只报不判"（legibility.py 抬头写着），所以降不降这一档没有尺子会替你红。
+     还有一条会影响任何后续测量：这里的膜色是**字面 hex**（只有 --ks-petal 是 token），
+     哨兵档扳不动它，所以"被膜洗过"的区域 day 与 sentinel 逐字相同；把"整页都变了"
+     写成"整页被接管"会高估一层。
+     膜跟着**面板档**走，"白天档=浅截、夜晚档=深截"对这一层是成立的：这三支 light-dark()
+     解在 html::before 上，而 §1 把 color-scheme 用 !important 钉在 :root——站点在自己包装层
+     上声明的档改不动 html 这一格。2026-10-01 经 ?glassprobe 现量六站两档（tools/glass-census.py
+     那一跑每行都带解档列）：day 档 html 六站一律解成 light、night 档一律 dark，body 与 html 同档。
+     同一件事也回证了上面那把拟合尺：veil-gradient.py 是"两支各解一遍取更好那支"，六站十二格里
+     十一格选出来的支与面板档一致，唯一不一致的是 mdn/白天，而那格两版模型都 ≤6 占 0%
+     （选支在两个 0% 之间没有挑选力）——所以没有一条结论是靠选支选出来的。
+     注意这条只对**膜**成立：画布按 §2 的 :where(body) 跟着站点让路，浮层按 §4c 自己钉档。 */
+  html::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: 2147483647;
+    pointer-events: none;
+    background-image:
+      linear-gradient(170deg,
+        color-mix(in srgb, light-dark(#ffd3e6, #6b4aa8) var(--ks-veil-a), transparent),
+        color-mix(in srgb, light-dark(#fff2f8, #1a0f28) var(--ks-veil-a), transparent) 60%,
+        color-mix(in srgb, light-dark(#ffc7e0, #8a5ad0) var(--ks-veil-a), transparent)),
+      radial-gradient(circle at 30% 40%,
+        color-mix(in srgb, var(--ks-petal) calc(var(--ks-veil-a) * 1.3), transparent) 0 4px,
+        transparent 4.5px),
+      radial-gradient(circle at 70% 15%,
+        color-mix(in srgb, var(--ks-petal) calc(var(--ks-veil-a) * 1.3), transparent) 0 3px,
+        transparent 3.5px);
+    background-size: auto, 260px 260px, 190px 190px;
+  }
+
+  /* ---------- 4. 组件糖化 ---------- */
+  /* 链接的字色是强制的，底却不是：站点自己涂的那块浅底留在原地，夜档的浅粉字压上去量到
+     1.55–1.66（runoob 夜晚档整页链接都在这一档上——侧栏三十余行、正文"开始学习HTML!"、
+     右侧广告位标题）。§99 那块字宽矩形垫子治得了标题，治不了链接：给全部 a 垫底的跑法在
+     w3schools 夜档给 222／255 枚链接画了面、一屏 345,558 px²，站家 logo 被抹成一块实心
+     深色板——撞「强调太突兀」那条，否掉。换成描边：只在浅墨那一支（light-dark 的 dark 支）
+     沿字的外沿压一圈 canvas-1 硬边，四个 1px 直角偏移、不给模糊半径。三格读数：
+     ① 白天档逐字 no-op——同页两拍 1,920,000 格里 0 格改动（那一支是 transparent）；
+     ② 自家深底上不可见——github features 夜档动过的 28,248 格里 55% 幅度 ≤4/255、
+        全页最大 31/255（边色＝画布色，暗压暗）；
+     ③ 站家浅底上有效——runoob 夜档那 5 行从 1.55–1.66 抬进 legibility 的达标侧，
+        代价 62,805 格（整幅 3.3%）全是字的外沿，一块矩形也没画。
+     两条错路：① 把 §99 那两层 2/5px 模糊光晕原样搬到链接上＝糊（2× 看图那行字外一圈发虚，
+     legibility 还多出一行 1.1），模糊半径一起吃掉 1–2px 宽的中文笔画；
+     ② 换一枚两头都读得过的中间亮度粉：把两端比值拉平解 (L+0.05)²=0.89×0.0575 得 L≈0.176，
+     最好也只到 3.9:1，还顺手把我们自家 canvas-2 面上的链接从 8.7 拉到 3.6——单一颜色救不了
+     两个底，这条算术 §99 抬头推过一遍。
+     开关仍走 --kHalo（与标题垫子同一档）：这一档开／关两拍的像素差 109,570 格，恰好等于
+     「边 62,805＋垫子 46,765」两套互不相交的格——那个可加性就是这一档的证人。 */
+  a {
+    color: var(--ks-link) !important;
+    --ks-edge: color-mix(in srgb, light-dark(transparent, var(--ks-canvas-1))
+                                   calc(var(--kHalo, 1) * 100%), transparent);
+    text-shadow: 1px 0 0 var(--ks-edge), -1px 0 0 var(--ks-edge),
+                 0 1px 0 var(--ks-edge), 0 -1px 0 var(--ks-edge);
+    text-decoration-color: color-mix(in srgb, var(--ks-link) 45%, transparent);
+    /* 圆体把基线压低了，下划线贴着字底会糊；偏移量用 em，随字号走 */
+    text-underline-offset: 0.14em;
+  }
+
+  /* 关掉糖果标题时退回正文墨色（仍可读），不是"站点原色"——CSS 拿不到站点原色。
+     -webkit-text-fill-color 必须跟着点名：站点用 background-clip: text 做渐变字时，
+     填充色是 transparent，color 写 !important 也够不着它——实测 css-tricks 那两行
+     巨型标题（"Latest Articles"）在我们的粉底上仍然是站点给的字面白色，量到 1.61:1。
+     不派生一个 token 而是要写两遍这条 color-mix：两处不一致时字色和填充色会错开，
+     错开的那半像素边就是"看着糊"，比重复一行贵。 */
+  h1, h2, h3, h4 {
+    --ks-head-ink: color-mix(in srgb, var(--ks-head) calc(var(--kHeads, 1) * 100%),
+                                          var(--ks-ink-1));
+    color: var(--ks-head-ink) !important;
+    -webkit-text-fill-color: var(--ks-head-ink) !important;
+  }
+
+  /* content 无法用 1/0 调制，所以用 @var text 直接把整串值交给面板 */
+  h1::before {
+    content: var(--kEmoji, none);
+  }
+
+  /* 站点自己涂了深色块、面板却停在白天档时，强制的深粉字压上去只有 2:1（像素闸门量过：
+     字对站点的底 2.04，夜晚档压到浅色站点上 1.87）。换颜色救不了：对 L≈0.93 的浅底要
+     4.5 倍得 L≤0.168，对 L≈0.02 的深底要 4.5 倍得 L≥0.265，两个区间在亮度轴上不相交——
+     不存在一个颜色同时读得过两种底，而用户样式表又读不到站点自己涂的那块。
+     于是 2026-10-06 起不再猜那块底，改成给标题自己造一块底：--ks-plate（＝canvas-1）垫一层
+     只有字那么宽的圆角面（radius 10px、padding .18em/.5em），字对的那块面由我们排。
+     同一具夹具、同一个量法（tools/diff-shots.py 撞色那项）：字对贴边 7.13:1（白天，贴边对底
+     42.3×）／8.38:1（夜晚，63.2×）；被它换掉的四层光晕（2/5/10/18 @ 100/100/90/70）在同一条
+     闸门红线上只到 4.37／3.70（同一份 CSS 另一次连拍读 4.30／3.54，出图自带 ±0.2 抖动）。
+     自家画布那一侧保持中性：负控制 7.04 对 7.08、8.35 对 8.28。浓度仍由 --kHalo 调制——
+     color-mix(… calc(var(--kHalo, 1) * 100%), transparent) 让关档时这块面整个消失，而
+     padding／圆角／宽度是常数，开关两档的几何逐像素相同，成对闸门量的还是"涂没涂"这一件事。
+     2/5px 两层薄光晕留着收边，它单独还加不加分没量过。
+     走过的三条错路，别再走：
+     ①整幅面（没有 width:fit-content）：真站和谐闸门红 4 段「孤零零立在站家的底中间」，地面
+       普查在 5 站 10 档上读 48 块／415,458 格（缺 github-features 那一站，与下面那个 12 档
+       读数不同口径，只能当"更大"的定性证据），看图就是一排深色横条——闸门和眼睛一起否掉；
+     ②垫成更浓的粉（canvas-3 混 head）：自家画布上反而把标题读性拉低（7.08→6.13、8.28→6.28），
+       圆点网格负控制被顶到 37% 命中——垫子的底色必须等于画布那一档，不然它就不是"隐形"了；
+     ③顺手写 background-image:none !important：它把 runoob 用图像替换掉的标题（文字本身就是
+       logo 图）擦成一块空底。CONTRAST／PIX／CTRL／DIFF／HARMONY 全绿，只有看图看得见。已删。
+     代价登记：这一格把"站点没涂底却被我们画上面"的面积买大了——地面普查的面形从
+     26 块／81,610 格（四层光晕那版）变成 54 块／304,336 格（6 站 12 档全覆盖）。字要读得过
+     就必须有依托，这是这一格主动买的，不是漏网；数到它的尺子就叫这个名字（tools/ground-diff.py）。
+     钉住上色那条声明的刀是 K35（tools/knives.py）；宽度那一形没刀——和谐闸门读的是真站那
+     十二张图，一柄刀换不到一批重拍，它现在的证人只有上面 ① 那组对照读数。
+     撞色那一格在真站上有具名的现场：w3schools 夜晚档正文列里那块 367×378 的面形（33,011 格，
+     图 /tmp/face-sheet-w3schools-night.png）——裸页读到纯白 rgb(255,255,255)，上肤读到
+     rgb(239,238,241)，仍在浅底一侧（同一档的 canvas-1 是 rgb(70,49,101)），而块内 60% 的格
+     随我们的 token 翻色。夜档的浅紫墨压在这种"停在白天的卡"上读不动，于是这一圈深色垫子
+     落在卡面上就成了一块硬边深色板——图里 "Learn CSS" 底下那一条。页尾 "Examples in Each
+     Chapter" 同一形再来一次。这两块不是新缺陷，是上面"两个亮度区间不相交"那条在真站上的读数。
+     机制换成垫底后形状由几何决定：落在卡面上的深底只有字那么宽（width:fit-content），不再是
+     横贯正文列的带子——带子那一形没了，"深底坐在站家白卡上"这一形还在，它现在计在普查
+     那 54 块里。
+     链接不吃这块矩形底，改吃一圈描边（§4 那条 --ks-edge）：矩形垫子要给整页链接画面上，
+     代价在 w3schools 夜档量到 222／255 枚链接、一屏 345,558 px²，否掉了。而"光晕"那一形
+     确实不能搬到链接上：16px 的中文笔画只有 1–2px 宽，模糊半径会渗进笔画
+     自己（实测那一行的中位亮度从 0.067 抬到 0.157，局部对比 1.75→1.40，反而更糊）——
+     描边之所以成立，是它把半径收成了 0。
+     白天档那一边的撞色仍没有 CSS 解，只有切档（我们的深墨压站家深底，描边在那一支是
+     transparent）——这条写进 README。 */
+  h1, h2, h3, h4 {
+    --ks-plate: var(--ks-canvas-1);
+    width: fit-content !important;
+    max-width: 100%;
+    padding: 0.18em 0.5em;
+    border-radius: 10px;
+    background-color: color-mix(in srgb, var(--ks-plate) calc(var(--kHalo, 1) * 100%),
+                                         transparent) !important;
+    text-shadow:
+      0 0 2px color-mix(in srgb, var(--ks-canvas-1) calc(var(--kHalo, 1) * 100%), transparent),
+      0 0 5px color-mix(in srgb, var(--ks-canvas-1) calc(var(--kHalo, 1) * 100%), transparent);
+  }
+
+  /* SVG 里的字必须单独点名：它走 fill，不是 color——实测 css-tricks 的
+     "Latest Articles" / "Quick Hits" 是 <text fill="#fff">，站点按暗底画的白字，
+     我们把页面涂成粉底后它够不着任何一条配色规则，量到 1.61:1；
+     更糟的是标题光晕照样糊在它外面（text-shadow 会继承进 SVG），等于给白字再垫一圈白。
+     只收 text/tspan：图标是 path/circle/g，跟着改色等于把整站的插画涂成一块墨。 */
+  text, tspan {
+    fill: var(--ks-ink-1) !important;
+  }
+
+  button, [type="button"], [type="submit"], [type="reset"], [type="file"],
+  summary, [role="button"], .btn, [class*="button"] {
+    /* 这一档只留形状。光晕 2026-10-04 挪到下面那条 :not([class]) 规则里：用户指着
+       GitHub 页头那排导航钮说"强调太突兀"，量出来那五块的面是站家刻意留空的
+       （.NavDropdown-module__button 把底色写成 initial、border 写成 0px），
+       而它**没写 box-shadow**——所以我们唯一抢到手的那件东西就是一圈霓虹。 */
+    border-radius: calc(var(--ks-r-sm) * var(--kRound, 1)) !important;
+  }
+
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]),
+  textarea, select {
+    border-radius: calc(var(--ks-r-sm) * var(--kRound, 1)) !important;
+  }
+
+  /* 复选/单选/滑块只借 accent-color，appearance 一律不碰，否则控件会消失 */
+  input[type="checkbox"], input[type="radio"], input[type="range"], input[type="color"] {
+    accent-color: var(--ks-sakura);
+  }
+
+  article, section, aside, details, blockquote, fieldset, figure, table,
+  dialog, [role="dialog"], [role="menu"], [role="listbox"], [role="tooltip"] {
+    border-radius: calc(var(--ks-r-md) * var(--kRound, 1)) !important;
+  }
+
+  dialog, [role="dialog"], [role="menu"], [role="listbox"], [role="tooltip"],
+  [class*="card"], [class*="modal"], [class*="dropdown"], [class*="popover"], [class*="toast"] {
+    box-shadow: 0 10px 30px
+      color-mix(in srgb, var(--ks-canvas-3) calc(var(--kShadow, 1) * 60%), transparent) !important;
+  }
+
+  hr { border-color: var(--ks-border); }
+  mark { background-color: color-mix(in srgb, var(--ks-petal) 70%, transparent); }
+
+  /* ---------- 4b. 裸元素兜底：这一节整段刻意不带 !important ----------
+     用户源的普通声明排在作者源普通声明**之下**（Cascade 4 的第 2 级 vs 第 3 级），
+     所以"站点自己排过"的一切都会原样赢回去：Tailwind 那类把 border-width 归零的
+     preflight、自带表格主题的文档站、自带输入框样式的后台。只有真的什么都没写的
+     裸 <table> / <input> / <dialog> 才拿到下面这套。加上 !important 就是把每张表
+     都扳成我们的样子，那是破版不是换肤。
+     底色与文字色一律成对写，避免只覆盖一边造成"深字压深底"。 */
+  table { border: 1px solid var(--ks-rule); }
+  caption { color: var(--ks-ink-3); padding-block: 0.4em; }
+
+  th, td {
+    border-block-end: 1px solid var(--ks-rule);
+    padding-block: 0.35em;
+    padding-inline: 0.6em;
+    /* 等宽数字：让一列里的 1、7、¥ 宽度一致，纵向能对齐着扫下来。
+       只有含数字的字形受影响，正文里没数字的格子等于没动 */
+    font-variant-numeric: tabular-nums;
+  }
+  /* 竖线只给"真的在报数据"的表。判据用结构而不是猜：有 thead/th 才补，
+     因为 th 的语义就是"这一列的表头"。日历、看板、价格表那类拿 <table> 当排版
+     的版面通常一个 th 都没有，画满网格反而更难读——上一版因此整段不补竖线，
+     结果连真数据表也糊成一片，那是把两种表一起牺牲了。 */
+  table:has(> thead th) :is(th, td) + :is(th, td) {
+    border-inline-start: 1px solid color-mix(in srgb, var(--ks-rule) 72%, transparent);
+  }
+  thead th {
+    color: var(--ks-head);
+    border-block-end: 2px solid color-mix(in srgb, var(--ks-sakura) 55%, var(--ks-rule));
+    /* 表头压一层极淡的糖：表一长，"哪几行是数据、哪一行是列名"就会在滚动中失焦。
+       7% 是量出来的——12% 那一档白天档表头读起来已经像一块按钮，斑马纹反而被压住 */
+    background-color: color-mix(in srgb, var(--ks-sakura) 7%, transparent);
+  }
+  tbody tr:nth-child(even) {
+    background-color: color-mix(in srgb, var(--ks-sakura) 9%, transparent);
+  }
+  /* 悬停整行：列一多，眼睛跟丢是主要失效方式，抬一行比加竖线更管用 */
+  tbody tr:hover {
+    background-color: color-mix(in srgb, var(--ks-sakura) 18%, transparent);
+  }
+
+  blockquote {
+    border-inline-start: 3px solid color-mix(in srgb, var(--ks-sakura) 55%, transparent);
+    /* 左边那条线只说"这里换了个来源"，淡面才说"这一整块是引文"。
+       12% 是逐块看图定的：8% 那一档白天几乎看不出、夜晚整块和页面融在一起，
+       两档里只有白天勉强成立；抬到 12% 后白天仍轻于高亮块（70%），夜晚开始真的抬起一块 */
+    background-color: color-mix(in srgb, var(--ks-petal) 12%, transparent);
+  }
+
+  /* 键帽：UA 不给 kbd 任何"这是个要按的键"的信号，只有等宽字。补成对的面与边框，
+     圆角由 §4 那条 pre/code/samp/kbd 负责；站点自己排过 kbd 的（文档站常见）原样赢回去 */
+  kbd {
+    background-color: var(--ks-canvas-2);
+    border: 1px solid var(--ks-border);
+    color: var(--ks-ink-1);
+    padding-inline: 0.35em;
+  }
+
+  /* details 的开关是可以点的东西：字色借标题那一档，让它在一排正文里像控件 */
+  summary { color: var(--ks-head); }
+
+  /* 选择器与上面那条圆角规则同形，:where() 把权重归零，好让 [type=submit] 那类
+     由按钮档接管底色；不加 !important 才能被站点自己的样式盖回去 */
+  :where(input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]),
+         textarea, select) {
+    background-color: var(--ks-canvas-1);
+    border: 1px solid var(--ks-border);
+    color: var(--ks-ink-1);
+  }
+
+  button, [type="button"], [type="submit"], [type="reset"] {
+    background-color: var(--ks-btn);
+    color: var(--ks-ink-1);
+    /* UA 给按钮的是 2px outset，算出来是黑描边：不点名边框的话，圆角里嵌一圈硬边，
+       和旁边 1px 粉边的输入框摆一起就像漏做了一半 */
+    border: 1px solid var(--ks-border);
+  }
+
+  /* 光晕只给**没有类名**的按钮。先记一笔错的走法，免得下次再走过去：把这条和上面
+     那条面合并成一块"同生同灭"是没用的——层叠是**逐属性**判的，同一块里的两条声明
+     各自输赢，GitHub 那排声明了底色没声明光晕，搬完家它照样发光（15:45 第一版就栽在
+     这里，注释还跟着写了一句"面拿不到的按钮也就拿不到光晕"）。CSS 里也没有
+     "读我自己最终用的那个 background-color" 的函数，所以"只给涂了面的按钮加光"这句
+     没法照字面写。退一步用可查的形状：**带类名＝站点自己排过这个控件**
+     （GitHub 那排正是 .NavDropdown-module__button），裸元素＝没排过、面归我们。
+     不带 !important：站点若自己排过 box-shadow，让它赢回去，和上面那条面同一口径。
+     已知漏法（留着，别当已修）：站点用元素形 `button{background:…}` 排过面又没排光晕时，
+     这圈光还是会落在站家的面上。 */
+  :where(button, [type="button"], [type="submit"], [type="reset"]):where(:not([class])) {
+    box-shadow: 0 4px 14px
+      color-mix(in srgb, var(--ks-sakura) calc(var(--kShadow, 1) * 26%), transparent);
+  }
+
+  /* 链接形的按钮要单独一条，而且必须带 !important——两件事都是 2026-10-03 用户指着
+     一张 w3schools 页头截图说的：那颗白底 "Upgrade" 钮。W3.css 那类框架把它的底写成
+     带 !important 的类名规则，而 §4b 那条圆角＋粉投影本来就管 [class*="button"]：
+     形状是我们的、底色是人家的，看着像漏做了一半。
+     压回去两件一起做：声明带 !important，且选择器比站点那截类名更具体
+     （a[href][class*=…] 算出来 0,2,1，站点的 a.w3-white 是 0,1,1）。这一条是按
+     「两种挂载通道都能赢」写的，而通道到底落在哪一层今天没量到——#53 记的就是文档推断：
+     TCC 挡住 profile，扩展内部怎么注入不可自证。若和站点 CSS 同属作者源，压过去靠的
+     是 !important 加特异度，站点用三截类名（0,3,0）写底时这一条仍压不过（已知留白）；
+     若它落在用户源，!important 直接排在作者的 !important 上面，那一格才由层叠保证。
+     只收 <a>，两条都是实测：把 !important 加到上面那条元素形规则上，CTRL 的反面名册
+     当场红两块（站点的 #2f81f7 与 #2ea463 被扳成我们的面），而"站点自己排过底色的控件
+     要不要覆盖"是 #66 还没定的那一格；想用 background-color: revert 把壳让回站点也不行
+     ——revert 滚到的是 UA 值，量到 rgba(0,0,0,0)，站点的底一并没了。链接形天然没有
+     那一格：<a> 里放不下 button，解析器会把它挪出 a。summary 不进来：它多是整行展开条，
+     涂成粉比留白更糟。 */
+  a[href][role="button"], a[href].btn, a[href][class*="btn" i], a[href][class*="button" i] {
+    background-color: var(--ks-btn) !important;
+    color: var(--ks-ink-1) !important;
+    /* 墨还得跟着**上色那个属性**下去。2026-10-06 从 docs.github.com 那颗 "Quickstart" 的
+       缓存文档与缓存 CSS 现读到的形状：站点把字色排在**孙节点**的类名上
+       （.Button--label-primary{color:var(--brand-button-primary-fgColor-rest)}，0,1,0 无
+       !important），我们写在 <a> 上的 color 只能靠继承过去，而继承值在任何直接命中的声明
+       面前都输——面我们的、字站家的。先记一笔错的走法：我第一版在这里写了"真站量到
+       1.36:1（白天）／1.38:1（夜晚）"，那对数**作废**——取样裁块外扩到了那颗钮所在的白卡片，
+       把卡片底当成了字（同一枚 30×30 的分享钮也中过这一刀：圆角外的四角就是页面底）。
+       机制由夹具那枚证人举住：a.ksPrimerBtn 复刻同一形状，改前 tf 实测 rgb(255,255,255)、
+       我们的墨是 rgb(58,43,62)／rgb(244,234,255)，两档各红一次，K36 割这条声明就红回那一本。
+       color 够不着那个孙节点，-webkit-text-fill-color 是可继承的**上色**属性：站点那条只写了
+       color，孙节点没写自己的 fill，就从我们这里继承——不新增 `*` 形选择器，也就扫不进图标
+       和徽标。已知代价两条：① 站点若把渐变字（background-clip:text + fill:transparent）排在
+       **同一个 <a>** 上，这条 !important 会把渐变扳成实心（仍可读，只是不好看）；② 只加在
+       这一条上，不加到上面那条元素形的面：那一形站点声明了底就让路，让了面还强行上墨就是把
+       我们的字压到站家的地上。夹具那枚证人读的是 tf（真正上色的属性），不是 color。 */
+    -webkit-text-fill-color: var(--ks-ink-1) !important;
+    border: 1px solid var(--ks-border) !important;
+  }
+
+  /* 文件控件的按钮是独立伪元素，不碰 appearance 也能上糖（底色跟按钮同一支，
+     否则同一排里 <input type=file> 的那个"选择文件"会显得比别的按钮淡一档） */
+  ::file-selector-button {
+    border: 1px solid var(--ks-border);
+    border-radius: calc(var(--ks-r-sm) * var(--kRound, 1));
+    background-color: var(--ks-btn);
+    color: var(--ks-ink-1);
+    margin-inline-end: 0.6em;
+    padding-inline: 0.7em;
+  }
+
+  /* progress 听 accent-color；meter 在 Chrome 里走自己的语义色（绿/黄/红），
+     要扳它得给 ::-webkit-meter-* 配 appearance:none，那会让控件在别的引擎上消失，不值 */
+  progress, meter { accent-color: var(--ks-sakura); }
+  fieldset { border: 1px solid var(--ks-border); }
+  legend { color: var(--ks-head); padding-inline: 0.4em; }
+  summary::marker, summary::-webkit-details-marker { color: var(--ks-sakura); }
+  /* 只读字段：Chrome 默认不给任何信号，只能点上去发现改不动。底色挪一档就够，
+     不动边框，免得和站点自己的 fieldset 边框打架。
+     类型必须逐个排除而不是写 input:read-only —— 实测 Chrome 让 :read-only
+     匹配全部 input 类型，checkbox / range / file / button 一个不落，
+     偷懒写法的代价是给全站每个复选框刷上粉底。 */
+  :where(input:not([type="checkbox"], [type="radio"], [type="range"], [type="color"],
+                   [type="file"], [type="button"], [type="submit"], [type="reset"],
+                   [type="image"], [type="hidden"]),
+         textarea):read-only {
+    background-color: color-mix(in srgb, var(--ks-sakura) 12%, var(--ks-canvas-1));
+    color: var(--ks-ink-3);
+  }
+  /* 禁用态：光标比颜色更早说明"这个不能点"；不透明度只管可点性提示，
+     WCAG 1.4.3 本身豁免非激活控件，所以这里不声称禁用态仍达 AA */
+  :where(button, input, select, textarea, [role="button"]):disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+  /* 展开的下拉面板由 option 自己上色：不写的话夜晚档弹出来是系统的白底列表，
+     比页面本身亮一整档。option:checked 是面板里那行高亮，不是外面的选中值 */
+  option { background-color: var(--ks-canvas-1); color: var(--ks-ink-1); }
+  optgroup { color: var(--ks-head); }
+  option:checked { background-color: color-mix(in srgb, var(--ks-sakura) 30%, var(--ks-canvas-1)); }
+  /* 模态遮罩：Chrome 的 dialog::backdrop 默认是透明的，弹窗会和页面糊在一起。
+     虚焦那 3px 是给"遮罩只压暗、不分层"补的一刀：压暗靠颜色，虚焦让弹窗真的浮起来。
+     后两条选择器接的是 class 形遮罩：GitHub/Primer 那类不用原生 dialog，遮罩是一个
+     `<div class="prc-Dialog-Backdrop-…">`，::backdrop 结构上够不着它（真站量到两次：面板穿上
+     了玻璃、它背后铺满大半页的遮罩还是站家的灰蓝）。要求类名里同时有 backdrop 和 dialog/modal
+     两个词根，是为了不撞上正文里那些单叫 backdrop 的背景板。
+     后两截接的是 mask 词根那一族（2026-10-03 在反代缓存的四份样式表里量到的原文）：
+     Vue 套件的遮罩写作 .vui_dialog--mask（mask×dialog）、京东写作 .jd_pc_dou_popup_mask
+     （mask×popup）。**裸 mask／裸 overlay 不收**——GitHub 的 .Overlay 是面板本体、
+     京东的 .wechat_overlay 是 α0.4 的白底，收进来就是把一块面板涂黑。
+     **×modal 那两形仍不收**：这一条从 2026-10-04 起带 !important（见下面那段的层叠账），
+     而 §4c 玻璃族本来就带 [class*="modal" i] 且是 !important——再收 ×modal 就是让两条
+     !important 在同一枚面板上按特异度打架，而那两形没有真站原文样本撑腰（#77 名册里
+     只量到 mask×dialog 与 mask×popup）。原来那句"玻璃族是 !important、这一条不是"的理由
+     已随这条改动作废，别再照抄。 */
+  dialog::backdrop,
+  [class*="backdrop" i][class*="dialog" i],
+  [class*="backdrop" i][class*="modal" i],
+  [class*="mask" i][class*="dialog" i],
+  [class*="mask" i][class*="popup" i] {
+    /* 两条声明都要带 !important，理由不是"压住站点"这么笼统：普通声明里作者源排在
+       用户源**之上**（MDN/Cascade 4 原点表：UA normal < user normal < author normal），
+       所以用户样式表想拿到站点已经声明过的那一项，只有 !important 这一条路。
+       真站现读（numpy.org 手册页，15:00）：站家 pydata-sphinx-theme.css 用
+       `#pst-search-dialog[open]::backdrop` 把遮罩底色写成纯黑、另带 opacity 半档，
+       我们不带 !important 时开态遮罩实测是黑的、只有 blur 是我们的。
+       注意这条只救底色：站家那个 opacity 我们不声明，仍会乘上来（#90）。 */
+    background-color: color-mix(in srgb, var(--ks-scrim) 55%, transparent) !important;
+    backdrop-filter: blur(3px) !important;
+  }
+  abbr[title] { text-decoration-color: color-mix(in srgb, var(--ks-sakura) 70%, transparent); }
+  ins { text-decoration-color: color-mix(in srgb, var(--ks-sakura) 60%, transparent); }
+  del, s { color: var(--ks-ink-3); }
+  /* 淡墨只给画布。`del, s` 直接命中子元素，所以它会落进我们涂的面上：按钮面（下面那条）
+     和玻璃面（§4c 后代那条的元素表里补了 del, s）。落进面里就是"那门没配进判定的墨"——
+     按钮浓度的探针 scratch/probe-btn-cap.py 量的上限是 ink-3 在混色面上同口径只能到
+     白天 ≤10.0%／夜晚 ≤14.2%，出厂 34/24 早已越过。
+     划掉这件事是那条线在说的，不是那层淡色在说的，所以面上的淡墨不承重。 */
+  button :is(del, s), [type="button"] :is(del, s), [type="submit"] :is(del, s),
+  [type="reset"] :is(del, s) { color: var(--ks-ink-1); }
+
+  /* Chrome 自动填充会把字段刷成一块不透明黄，比任何版式问题都扎眼 */
+  input:-webkit-autofill, textarea:-webkit-autofill, select:-webkit-autofill {
+    box-shadow: 0 0 0 100px var(--ks-canvas-2) inset;
+    -webkit-text-fill-color: var(--ks-ink-1);
+    caret-color: var(--ks-sakura);
+  }
+
+  /* 弹窗的边框归我们，面与字色不再在这儿写：它现在是 §4c 那族浮层的一员，
+     由玻璃层成对接管（带 !important）。留两条声明在这儿只会变成"没人能赢的第二定义"。 */
+  dialog { border-color: var(--ks-border); }
+
+  /* 代码块只借圆角，字色与等宽字体一律不写 —— 保住语法高亮 */
+  pre, code, samp, kbd {
+    border-radius: calc(var(--ks-r-sm) * var(--kRound, 1)) !important;
+  }
+
+  img { border-radius: calc(var(--ks-r-sm) * var(--kRound, 1)); }
+
+  ::placeholder { color: var(--ks-ink-3); }
+
+  /* ---------- 4c. 浮动面：把"浮在内容之上"那几层扳成液态玻璃 ----------
+     站点自己的浮层几乎都是一块实心白/实心灰，压在粉地上像贴了张纸；换成半透 + 虚焦，
+     底下那层粉和滚过去的内容会糊成一片柔光浮在面板后面，才和 §2/§3 是同一套材质。
+
+     这一节刻意用 !important，和 §4b 的"让路"相反，因为要的是**统一**：一堵面只要肯让
+     底下透上来，站点原本写在这面上的浅色字就同时没了依托（深底白字的下拉菜单是最典型的
+     一例）。所以玻璃和墨色必须一起接管——只挑"让不让透"而不挑"字归谁"，就会造出一批
+     读不动的控件。代价写进 README：站点自己排过的弹窗/菜单也会被扳成我们的材质，
+     开关只决定透不透，不决定归不归我们。
+
+     族里刻意不含 header/nav/aside/sidebar：那些是版面骨架不是浮层，站点常在它们内部
+     放自己的导航配色，整块接管墨色会把它们的选中态抹平，收益（透一点粉）不值这个价。
+     京东的分类悬停菜单（`JS_navCtn cate_menu` 连着 `cate_menu_item`、`cate_menu_line`）
+     就在这一笔账上：加 `menu` 词根会把整列导航连同它的条目一起扳成玻璃。
+
+     两个语义属性是给 portal 出去的面板留的口子。GitHub 服务端 HTML 里
+     `Box … hx_rsm-modal`、`Popover js-hovercard-content`、`NavDropdown-module__dropdown__xm1jd`
+     都靠类名子串命中，但 Primer 的 ActionMenu 面板挂的是
+     `Primer_Brand__ActionMenu-module__ActionMenu___xLxGU` 这种哈希类名，词根追不上它；
+     能被站点长期承诺的只有语义属性——MUI/React-Modal/Bootstrap 把模态挂在
+     `[aria-modal="true"]` 或 `role="alertdialog"` 的内容面板上而不是导航上，
+     这一格补的是"类名指望不上的那一类"。
+
+     末尾那截 `:not(button, svg)` 是给子串匹配的误伤留的：GitHub 首页服务端 HTML 里被词根
+     命中的 31 个元素中，5 个是 `<button class="NavDropdown-module__button__PEHWX">`（侧栏
+     折叠钮，Primer 给它写的是 background:0 0——底色那一格站点明确留空，裸页两趟量到的是 UA 的
+     ButtonFace 灰）、5 个是同一族的 `<svg class="…buttonIcon…">`
+     三角箭头。它们不是浮层，是导航上的控件——给它们上玻璃等于在站点没画底的地方画一块毛面，
+     还要把品牌色换成我们的墨。排除式只对这两类，是按量到的形状收的，不是列一个"看起来
+     不像面板"的清单。
+
+     后面那四个词根（sidebar / topnav / secondarybar / fixed-btn）是"常驻浮动条"那一类，
+     名单由真站普查现推：同一套判据（computed position 是 fixed/sticky、可见、≥40×16）在
+     抽检名单的四站上量到 14 个浮动面，族里原有成员一个都没追上（floatGlassed 全 0）——
+     docs.github.com 3 个（其中 DocsSecondaryBar_bar 白天夜晚都是 rgb(255,255,255) 的实心白条，
+     墨是 rgb(0,0,0)，21:1，就那么浮在我们的紫底上）、w3schools 6 个（4 个不透明：230×873 的
+     白底固定侧栏 w3-sidebar，加三块叠着的 rgb(40,42,53) 固定顶条 topnav*）、
+     runoob 1 个（42×83 的白底固定钮 fixed-btn）、css-tricks 那篇文章 0 个（纯正文页，
+     这条 0 是判据本身的负控制：它没有把不粘的东西算成浮动面）。
+     MDN 那 4 个 sticky 面自己没涂底（computed background 是 rgba(0,0,0,0)），其中 3 个类名带
+     sidebar。这四个词根各自追上几个浮动面，是改完再用同一套判据在真站复量的（floatGlassed
+     那一列），改前四站全是 0；复量数出来的那一份写在本文件末尾那条普查记忆里。
+     刻意留在外面的词根由候选表复量（tools/root-census.py，白天臂 7 站＝名单 + Tailwind）：
+     浮最多的是 sticky 3／fixed 3／header 3，文档流 1／3／27；最大误伤 2,204,351 px²（github-docs
+     整页正文列）与 101,124 px²（Tailwind 代码区块）。这点收益换不起在站点正文区里换墨的代价。
+     这一截 topnav 是从"类名里有这个词根就算"收窄到"词根得落在词边界上"的，动机是一次实测：
+     w3schools 用 belowtopnavcontainer 命名"顶部导航条下面那一整片"，computed position 是
+     static、1269×4645＝5,895,110 px²——子串匹配把这块整页容器也当浮动条糊上毛面并强制换墨，
+     于是它里面站点自涂的白底卡（cert-card 实测 rgb(255,255,255)）上压着我们的浅紫墨。
+     同一条正文列逐行 A/B：17 行变差（对比度中位 16.85 → 1.16）、0 行变好、16 行不变。
+     收窄成六截词边界形式（~= / ^= / *="topnav-" / *="topnav_" / *="-topnav" / *="_topnav"）
+     之后，在抽检名单六站**渲染后的 DOM** 上复量：该追的一个没丢（w3schools 那两条 fixed 顶条
+     1269×33 仍在族里，subtopnav_firstitem 由 *="topnav_" 追上），被割掉的只有那一块整页容器；
+     runoob / MDN / docs.github / css-tricks / github 首页的服务端 HTML 里 topnav 一次都没出现。
+     这条收窄的代价也写在这儿：^= 读的是属性值的**起始**，所以站点把带词根的类名写在 class
+     列表中间时它看不见。六站服务端 HTML 里唯一那样写的一行（class="w3-bar w3-left topnavbar"）
+     落在一段 HTML 注释里，从没进过 DOM——今天量不到东西；要真遇上再把 *=" topnav" 补进来，
+     而不是退回子串匹配，那是上面那 5,895,110 px² 的账。
+
+     普查的第二批读数换了通道：脚本活着（不剥 <script>）、窗口 1280×1000、判据同上一条，
+     六站共 21 个浮动面，族里 9 个——w3schools 7/3、MDN 4/3、docs.github 3/2、runoob 4/1、
+     github 首页 3/0、css-tricks 那篇文章 0/0（这条 0 依旧是判据自己的负控制）。
+     族外那 12 个的账先纠一处上一版的错写：当时只扫了 class 就写成"它们没有可匹配的静态属性"。
+     补齐 id 与内联定位两栏之后，12 个里其实有 8 个带 id（w3schools 4 个：subtopnav、scroll_right_btn、
+     leftmenuinner、stickypos；runoob 3 个：runoob-nav-drawer、bm-panel-overlay、bm-panel，这三块
+     连 class 都没有），github 首页那条 header 还带 role="banner"。真实的说法是"有，但每条都各有一笔
+     付不出的账"：
+     ① 内联定位取式必须写成**不带空格**那一形——[style*="position:sticky"] 追上 w3schools 那块
+     157×24 的 #stickypos（后代只盖它 0%，玻璃真看得见），而 [style*="position: sticky"] 多一个空格
+     就整条落空（上一版量的正是带空格那形，所以记成"六站命中 1 个、新追上 0"）。不带空格那一形六站
+     合计新追上 1／12，代价是它同时跟上 JS 现写的内联定位；
+     ② id 侧只有子串形式够得着（[id*="topnav" i] 追上 1269×33 的 #subtopnav，词边界形式
+     [id~="topnav" i] 命中 0），而同一条子串顺带扫进一块 5,440,999 px² 的文档流容器（自涂不透明）——
+     跟上面 topnav 类名那次 5,895,110 px² 是同一笔账；
+     ③ 厂商名（MarketingHeader-module__root__<哈希>、lp-IntroHero、BackToTop、runoob-nav-drawer、
+     bm-panel）进族等于把族写成一份站点白名单，CSS Modules 的哈希一改就静默失效——尺子会停止开火
+     却不报错。
+     语义钩子里 role 那一族是空账：[role="banner"] 六站只够着 github 首页那一块（1 命中、不扫文档流），
+     而它自己的后代把它盖了 3562%，等于没上；[role="navigation"]、[role="complementary"]、aside、nav
+     新追上 0 块（nav 反倒扫进 4–7 个文档流容器，最大 595,461 px²）。
+     w3schools 那三条 1269×33 的固定顶条里 .topnavbackground 与 .topnavcontainer 在族内、#subtopnav 在
+     族外且自涂不透明——同一条横带上一半玻璃一实木，那是"让路"的现场，不是漏网。
+     <header> 按**元素**进族这一条是量完才放的，它比按词根便宜得多也更没用：量过的四站共
+     7 个 header 元素，只追上 2 个浮动面（MDN 的 sticky 124,362、github 首页的 fixed 91,368），
+     扫进 5 个文档流 header（其中 1 块自涂不透明，最大 217,752 px²）。真正否掉它的是像素：
+     把 header 加进族后同页重拍一对，每站每档只有顶端 21–24px 一条带变了（改动 22,393 与
+     23,371 个像素，占视口 1.7–1.8%），因为那两个 header 自己 background 是 rgba(0,0,0,0)，
+     涂色的是它们的孩子——MDN 的 nav.navigation 1269×66 自涂 rgb(255,255,255)，
+     docs.github 的 Primer SubdomainNavBar 1269×64 自涂 rgb(0,0,0)，孩子面积各为父格的
+     122% 与 113%。父格上那层毛面被站点自己的实心板整个盖住，等于没上。
+     所以这件事剩下的唯一杠杆不是选择器，而是要不要覆盖站点自己涂的实心常驻板——
+     那是"让路"那条原则的边界，是个产品决定，不由这条族的成员名单顺手替它做。 */
+
+  /* 这一族在真站上到底落没落地，现在有一把可复跑的尺子在量（2026-10-01 起）：
+     tools/glass-census.py 经反代的 ?glassprobe 档让页面自己报"哪些可见 fixed/sticky 面
+     的 background-color 解成了我们那一形 color(srgb … / α)、且带 blur"。按涂到的效果认，
+     不按"选择器匹不匹得上"认——后者要再抄一份族名单，而这一族在文件里本来就有四份逐字副本。
+     六站静息版面首跑（day，视口 1280×1413）：浮面 16／穿上玻璃 9，分布
+     runoob 1/1、MDN 4/3、docs.github 3/2、w3schools 6/3、github 首页 2/0、css-tricks 文章 0/0；
+     族外那 7 块里 6 块的 bg 解成 rgba(0,0,0,0)、剩下 1 块是 w3schools #subtopnav 自涂的
+     rgb(40,42,53)。两档数到的是同一份 9 块名单（逐块 tag/id/class/几何一字不差），只有解出来的
+     枝不同：day 读 color(srgb 1 0.917647 0.952941 / 0.86)（#ffeaf3＝白枝）、night 读
+     color(srgb 0.141176 0.0862745 0.203922 / 0.86)（#241634＝canvas-2 的夜枝），bf 两档都是
+     blur(16px) saturate(1.3)——上面那条"分支由面板定"在真站上跟着两档各自解对，
+     这一跑是它第一次被量到而不只是被断言。这组数在出厂那份 skin.css（47,531 字节、
+     sha1 前缀 2f13e98e2f8e）上首拍，之后在两代上各重拍过一次：改了淡划墨的那一份
+     （48,698／d94b0eac4e25）和把这段注释写进去之后的那一份（50,530／b36666372f5f），
+     两代各自 6/6 站量到、16/9，逐块名单连"盖%"一起 diff 为空。
+     **别拿这枚 sha 当"出厂就是它"**：注释会被 strip 带进派生件，所以写下这句话的下一跑
+     sha 必然又变——担保是"名单与盖% 逐块 diff 为空"，由 glass-census 现跑现比，不是这枚数。
+     对账：前一天用 devtools 的一次性普查量到 21/9，这次 16/9——**族内数一致，总数差 5**。
+     差额按正文验过一半：runoob 的 runoob-nav-drawer/bm-panel 在缓存的原始正文里出现 0 次，
+     它们是脚本现造的，而这条链路按设计摘脚本；github 首页的 progress-pjax-loader 正文里有
+     2 处但只在导航中画。w3schools 的 #scroll_right_btn 正文里有 7 处、这次没数到，
+     它为什么没进名单这一轮没量。所以这一档看到的是**没有 JS 的静息版面**：
+     下拉、弹层、遮罩这些真正吃玻璃的层全不在场内（它们在夹具与 M01–M06 那六柄刀里被量，
+     不在这里）。它只判一条：全名单玻璃归零＝族整体失效；某站少一块它不报。 */
+
+  /* "族落地"和"材质统一"是两个数，别拿 16/9 当后者。?glassprobe 现在每块面还报一个盖%：
+     自己涂了底的子孙与面矩形的交集面积占比（嵌套会重复计，所以能 >100；只认 background-color，
+     带 background-image 的那格跳过）。2026-10-01 六站 day 档现量，族内 9 块里 4 块盖 ≥94%——
+     MDN #main-sidebar 172、docs.github 的 SidebarNav 那块 287、它的 DocsSecondaryBar_bar 103、
+     w3schools #sidenav 94。这几块我们付了"强制墨色"的代价，肉眼看到的仍是站点孩子自己画的底。
+     族外那 7 块分成三种形状：扳了会显形的（github 首页 header 32、它的 lp-IntroHero 6、
+     w3schools #stickypos 0）；扳了也看不见的（MDN page-layout__header 122、docs.github
+     Header_stickyContainer 114、w3schools #leftmenuinner 94）；站点自涂实心且基本空着的
+     （w3schools #subtopnav，rgb(40,42,53) 且只盖 6）——只有最后那一格是"覆盖站点实心常驻板"
+     那个产品决定要答的，前两格的选择器账根本不成立。
+     名单扩到抽检名单之外的 10 个常用站（scratch/probe-more-sites.py，day 档）：9/10 量到、
+     浮面 13／穿上玻璃 5，sidebar 词根在 Bootstrap、Vue、NumPy、Python 四站各落上一块；
+     那 5 块里 NumPy 主栏 178、Python 的 sphinxsidebar 100，同样是"上了看不见"。
+     这一格 CSS 表达不了：选择器读不到"子孙涂了多少底"，所以它只能由普查报分布
+     （合计行下面那一行盖%），不进 rc、也不构成第二条判定。
+     这一列自己有一张正控制夹具：scratch/probe-cover-control.py 把 proxy.py 里那份探针原样
+     注进 /tmp/ks-cover-fixture.html（几何手工定死），现量三块面盖% = 65／200／0 与期望一字不差，
+     配对那一跑只把 A 那块 100×100 的实色改成透明，65 → 15。所以它认得出 background-image
+     那格要跳过、认得出 display:none／visibility:hidden 的孩子不算、也认得出"嵌套重复计"就是能 >100。 */
+
+  /* 末尾那道 :not(:has(> button)) 排掉的是"装着触发钮的那层壳"：2026-10-02 在开着脚本的
+     GitHub 首页量到页头 5 块 NavDropdown-module__container（position: relative，104–137×40）
+     被 dropdown 词根扳上玻璃，而面上的导航链接是站点自己写的浅色字 ⇒ 浅字压粉底；同一页
+     点开的那块 mega-menu 面板（1074×535，absolute）直接子节点是 ul/div，没有 button，
+     所以这一道排除留得住它。刻意不带 :has(> a)：同一块面板里那个 1074×64 的尾栏直接
+     子节点就是 a，带上会把真浮层一起排掉。四份副本由 check-controls 按整块字节相等钉住。
+     末尾再一道 :not(:has(> * > button)) 排掉的是"触发钮坐在孙节点上"的那一层壳：2026-10-03
+     现量 GitHub 页头那块 ActionMenu 的 container 只有一个直接子节点（div），button 挂在它下面，
+     所以带 > button 的那道按构造够不着它。用同一把尺同日只换这一处做的配对重拍：文档流面 19→17、
+     浮着的面 9→9 一块没少，dropdown 那一行整体归零，secondarybar 从 面2/静止1 收到 面1/静止0。
+     "在不在"由 check-controls 单独钉一次（整族四份一起删它，副本照样彼此相同），删了有刀。 */
+  /* 末尾那道 :not(h1, h2, h3, h4, h5, h6) 排掉的是"标题形被词根子串撞上"那一格。
+     2026-10-05 在 runoob 的 HTML 教程页现量到的形状：<h2 class="tutheader"> 被 header 那截
+     按子串追上，于是站点一处纯文字标题被画上整幅面。数是从配对重拍来的（同一台、同一链路，
+     只把这一截摘掉再出图）：1280×1500 的框里四块那样的带，y=496–539、1263–1306、1361–1404、
+     1459–1499（末块裁在框底），每块 x=232–1069；白天档割前 rgb(254, 234, 243)、割后
+     rgb(250, 247, 246)，夜晚档割前是 rgb(65, 52, 80)…rgb(69, 55, 87) 的深李、割后是
+     rgb(236, 234, 236)…rgb(240, 237, 243)（站家那块浅底），而哨兵档同一坐标读 rgb(39, 240, 43)
+     发绿——那四块是我们画的，不是站点换的色。两趟图除了这四块逐字节没差，所以这一刀没顺手动到别的格。
+     一条正文列里四块带竖着排下来，就是用户指着页头说过的那句"与整体不搭"的另一种形状：
+     不是配色不对，是我们无中生有画了一块底。
+     为什么写成"排掉标题形"而不是把 header 那截收到词边界：后者只治 header 这一根，
+     而这一格的原因是"页面 chrome 不会是一个 <h*>"——navbar／topnav／modal／tooltip 哪一截
+     都可能被站点挂在标题上（<h3 class="sidebar-heading">、<h2 class="modal-title">），
+     词边界形一根都治不到。代价按方向写清楚：这一截绑在族的元素自己上，面板里的标题字
+     照旧由后代那一支（:is(… h1, h2, h3, h4, h5, h6)）拿到墨，所以"标题不吃面"不等于
+     "浮层里的标题没上色"。证人：夹具里同一枚 tutheader 的一对——<h2> 那枚必须留着站家的底、
+     <div> 那枚必须吃到面（两块同红才是这一截写坏了）。"在不在"由 check-controls 单独钉一次，
+     两向各一把刀：整族删掉它红在守卫（K33），往那道排除里多加一项红在那枚 div 的正控制（K34）。
+     守卫按"六个标题形都在同一组排除里"认，不按整串逐字节认——第一版按整串认时，过收那一向
+     先把守卫自己打断，行为那本轮不到说话，那把刀被判成哑刀（实测 MISSED，改判据后才红）。 */
+/* 这一族的分支由面板定，不由站点定——**但只有浮动面钉这一条**（钉在哪一格、常驻条为什么
+     不钉，见下面那条 :where(:is(…)) 的账）。light-dark() 是按元素就近解的，而 §1 那条
+     color-scheme 只钉在 :root：站点在自己的 wrapper 上声明 color-scheme 时，它**子树里**
+     我们接管的每一格都跟着它翻，面板的强制档够不着。2026-10-01 修复前在六站两档现量到的就是这个形状：
+     docs.github 夜晚档族里 15/15 块面解成白天枝（实测 color(srgb 1 0.9176 0.9529 / 0.86)，
+     即 --ks-canvas-2 的白枝 #ffeaf3，而 html 的画布是夜枝 #1a1126）；github 首页白天档反过来
+     18/21 块面解成夜晚枝（站点在 main/react-app 两层上声明了 dark）；runoob 夜晚、MDN 白天、
+     docs.github 白天三格各 0 块翻。翻掉的那两格不制造读不动——面与面上的字在同一格上一起解，
+     拿到的仍是自家成对的档（2026-09-30 夹具那一跑的四对读数 9.30/7.20/8.94/12.75——
+     那是读数不是常数，闸门在管的是"墨对纸 ≥4.5"这条 AA 线，在 check-contrast.py）——塌的是"同一块材质
+     在不同站上不是同一档"，而这一节用 !important 接管浮层，换的正是这一条。
+     所以把分支跟着面一起钉死，后代从这一格继承。刻意只钉在这一族：§2 的 :where(body) 那格
+     仍然让站点赢（面板档在站点表过态的画布上让路，README 里写着的还是那条契约）。
+     页头那一截多挂了一道「挂在正文容器之下就让路」：2026-10-03 词根普查在六站量到它扳上
+     24 块面、其中 22 块不浮着，最大的两块——一篇教程页的 1184×382、一篇文档页的 704×562——
+     坐在 main 里面，那是内容容器不是常驻条。加上这道排除再量一遍：24 降到 13，那两块大底没了，
+     要的那几横（吸顶页头 1280×64、营销页头栏 1280×40、站点页头 1280×67）都还在；
+     代价是锚点导航条那一横（1216×60）跟着回了站家——它同样挂在 main 底下，选择器分不出这两者。
+   sidebar 那一截同理收成「最里层那一块才穿玻璃」（:not(:has(…sidebar…))）：2026-10-04 在七站上
+   用同一把尺复量，整根匹配 43 块面、38 块坐在文档流，最大那块是 MDN 的整页版式壳
+   div.layout__2-sidebars-inline 1280×3157（4,040,960 px²）、里面还套着两块 sidebar 类名的栏，
+   玻璃套玻璃把那两层 86% 粉底乘了一遍；收窄后面 22、文档流 19、最大 600,690 px²，浮着的 5 块
+   剩 3 块（少的那两块改穿在各自更里层的内容块上，面没消失）。K22 那柄刀管这条排除在不在。
+   开头再一道 :not(body, html)：词根是按子串认的，GitHub 把 body 写成 class="… header-dark"，
+   header 那一截当场命中 <body>——补这道排除之前量到整页被 color(srgb 1 0.9176 0.9529 / 0.86)
+   加 blur(16px) saturate(1.3) 糊了一层（面在内容底下，只有站点没涂的地方透出来，所以图上不响）。
+   玻璃要的是"背后有东西可虚焦"，<body> 背后什么都没有：这一格换来的是整页一层白烧的合成层。
+   2026-10-04 把两头的现读都补齐了。真站那页（渲染后的 DOM）：body 的 class 末截就是
+   header-dark，而 body 底下 ≤2 层没有按钮（btn_child／btn_grand 都 false），所以族末尾那两截
+   结构排除盖不住它——把这一项摘掉，body 当场匹配族；留着它，body 读 §2 的画布
+   rgb(255, 246, 250) 与 backdrop-filter: none。夹具那一页正相反：它的 <body> 直接铺着
+   <button>，:not(:has(> button)) 按构造先把 body 排在外面，摘掉这一项读不出任何变化
+   （body 依旧不匹配，后代那格两跑同为 14/46）——所以夹具给不了行为证人。
+   这一格因此钉在"在不在"守卫上（tools/check-controls.py 与 :not(:has(> button)) 同一族），
+   刀是 K30；族在真站上落没落地另由 glass-census 与 overlay-probe 两把尺子看着。 */
+  :is(dialog, [popover], [role="dialog"], [role="alertdialog"], [aria-modal="true"],
+      [role="menu"], [role="listbox"], [role="tooltip"],
+      [class*="modal" i], [class*="dropdown" i], [class*="popover" i],
+      [class*="toast" i], [class*="tooltip" i],
+      [class*="sidebar" i]:not(:has([class*="sidebar" i])), [class*="secondarybar" i],
+      [class~="topnav" i], [class^="topnav" i], [class*="topnav-" i],
+      [class*="topnav_" i], [class*="-topnav" i], [class*="_topnav" i],
+      [id*="topnav" i]:not([id*="below" i]), [id*="pagetop" i],
+      [class*="navbar" i], [class*="header" i]:not(:is(main, article) [class*="header" i]),
+      [class*="fixed-btn" i]):not(body, html):not(button, svg):not(h1, h2, h3, h4, h5, h6):not(:has(> button)):not(:has(> * > button)) {
+    background-color: color-mix(in srgb, var(--ks-canvas-2)
+                                    calc(100% - var(--kGlass, 1) * 14%), transparent) !important;
+    backdrop-filter: var(--ks-glass-blur) !important;
+    color: var(--ks-ink-1) !important;
+  }
+  /* #132 s4c：浮面里的「搜索壳」也上暗支底。
+     形状＝族的面 + 搜索壳 + 里面真的住着输入控件；:has 已经把它锁在面内，
+     所以这一支不需要再抄一遍 :not(面)——现读量过 s4cN==s4bN==3、s4cInFace==0。
+     证人＝github.com 快搜的三枚壳（480x56 / 456x32 / 456x32，56,064px2）：
+     落地前 bg=rgba(0,0,0,0) x2 + rgb(255,255,255)，落地后三枚全读 rgb(58,27,44)；
+     盒内精确色：近白 887/1729 -> 0，(243,241,247) 711/554 -> (60,29,51) 712/555。
+     面那串选择器是从「后代字色」那条逐字抄的第二遍，由 check-controls.py 按整块字节相等钉住。 */
+  :is(dialog, [popover], [role="dialog"], [role="alertdialog"], [aria-modal="true"],
+      [role="menu"], [role="listbox"], [role="tooltip"],
+      [class*="modal" i], [class*="dropdown" i], [class*="popover" i],
+      [class*="toast" i], [class*="tooltip" i],
+      [class*="sidebar" i]:not(:has([class*="sidebar" i])), [class*="secondarybar" i],
+      [class~="topnav" i], [class^="topnav" i], [class*="topnav-" i],
+      [class*="topnav_" i], [class*="-topnav" i], [class*="_topnav" i],
+      [id*="topnav" i]:not([id*="below" i]), [id*="pagetop" i],
+      [class*="navbar" i], [class*="header" i]:not(:is(main, article) [class*="header" i]),
+      [class*="fixed-btn" i]):not(body, html):not(button, svg):not(h1, h2, h3, h4, h5, h6):not(:has(> button)):not(:has(> * > button)) :is([class*="input" i], [class*="search" i], [class*="field" i]):not(:is(input, textarea, select)):has(:is(input, textarea, [role="textbox"], [role="searchbox"], [role="combobox"])) {
+    background-color: var(--ks-canvas-1) !important;  /* 两档同一支：夜档若沿用面那支 token，壳与面逐通道差 0/255，面叠几层都分不开（#141，2026-10-10 关系形证人现读 0.0）；昼档刻意不留 transparent：那会把站点那枚白药丸抹掉又什么都不垫，夹具读框子与自家面分离 1.000:1＝看不见框 */
+    /* #111：站点把聚焦环画在**壳**上而不是控件上（2026-10-12 真站现读：这枚 span 的
+       outline-color 与 border-color 双双 rgb(9,105,218)、2px）。:1024 那条全局
+       :focus-visible 按构造够不着——壳不是焦点元素，站点走的是 :focus-within。
+       环与边各跟一支现成的：环用 :focus-visible 同一支 color-mix，边用 §4 控件那支
+       --ks-border（同一趟现读里 input 的 border-top-color 已经是 rgb(247,195,216)）。 */
+    outline-color: color-mix(in srgb, var(--ks-sakura) calc(var(--kSparkle, 1) * 100%),
+                                             var(--ks-neutral)) !important;
+    border-color: var(--ks-border) !important;
+  }
+  /* #135 面里的控件不再自己垫一块底：底一垫就把站点排在底下的字盖住了。
+     形状＝族的面 + 一枚裸控件；只写 background-color，刻意不带 !important。
+     根因（2026-10-10 在登录态 github.com 快搜现读）：站点把控件的字写成
+     color 与 -webkit-text-fill-color 双双 transparent !important（作者源加粗体，
+     按 Cascade 4 排在我们的用户源普通声明之上，所以那一格扳不动），可见的字改排在
+     div[class*=inputOverlay] 的 span 上，而那枚镜像**排在控件底下**
+     （INPUT position:relative／z-index:1，elementsFromPoint 最上层就是 INPUT）。
+     §4 那条 :where(input…) 把控件底画成自家纸（夜 rgb(26,17,38)／昼 rgb(255,246,250)），
+     正好把镜像整个盖住——框里一个字都不剩。摘掉这格底之后透出的是自家面，
+     镜像由「后代字色」那一支上色，两档都读得动。
+     收益侧（盒内像素尺，同一把尺先跑过三格校准：匀色 0／已知 300 格读到 12.42／阈值抬到 13 回 0）：
+     夜档三跑逐字节同——摘掉这一支 0 格／最大对比 1.66（控件底读回 rgb(26,17,38)），带上 102 格／11.51
+     （底读回 rgba(0,0,0,0)）＝单变量。昼档不钉数：reverted 那张跨跑逐字节同，landed 那张两跑读出
+     63 格/7.48 与 83 格/8.99——抖的是登录态首页那一屏的面板自己（出图抖动早登记过），两拍墨都在 4.5 之上。
+     代价侧量到 0：w3schools 那条被接管的顶栏里，搜索框自己写着站点白底，
+     站点普通声明排在我们的用户源普通声明之上，所以加不加这一支两档的盒图与整面图四张都逐字节同
+     （夜 305 格／18.20、昼 202 格／18.73，底三拍都读 rgb(255,255,255)）。
+     一旦带上 !important，那一格就变成我们的夜墨压站家的白底＝1.16，
+     也就是 #112 那一形由我们亲手造出来——所以「不带 !important」这一格由 K44 举着，
+     摘声明那一格由 K43 举着，一头一尾。
+     名册侧（7 站两档，屏内且住在自家面里的控件共 2 枚＝github-home 快搜与 w3schools 顶栏）：
+     镜像排在控件**之上**的 0 枚，所以"显出原生字会不会与站点自己的字重影"这一形在本样本无读者。 */
+  :is(dialog, [popover], [role="dialog"], [role="alertdialog"], [aria-modal="true"],
+      [role="menu"], [role="listbox"], [role="tooltip"],
+      [class*="modal" i], [class*="dropdown" i], [class*="popover" i],
+      [class*="toast" i], [class*="tooltip" i],
+      [class*="sidebar" i]:not(:has([class*="sidebar" i])), [class*="secondarybar" i],
+      [class~="topnav" i], [class^="topnav" i], [class*="topnav-" i],
+      [class*="topnav_" i], [class*="-topnav" i], [class*="_topnav" i],
+      [id*="topnav" i]:not([id*="below" i]), [id*="pagetop" i],
+      [class*="navbar" i], [class*="header" i]:not(:is(main, article) [class*="header" i]),
+      [class*="fixed-btn" i]):not(body, html):not(button, svg):not(h1, h2, h3, h4, h5, h6):not(:has(> button)):not(:has(> * > button))
+      :is(input, textarea, select) {
+    background-color: transparent;
+  }
+
+
+  /* 分支钉在**浮动面**上，不钉在常驻条上。2026-10-04 用户指着 github.com/features 的页头说
+     "这个粉看起来与整体不搭了"：那一横 40px 的 div.MarketingHeader-module__bar 上披的是白天枝
+     color(srgb 1 0.917647 0.952941 / 0.86)，而它上下两条都是站家自涂的黑底（上面 Dev Days
+     横幅、下面 Features/Copilot 锚点导航条）——粉是这一格里唯一的异类。
+     异类的来源不是配色，是这一格先前把分支钉在了整个族上：站点在自己的包装层上写了
+     color-scheme（这一页是 primer-*.css 的 [data-color-mode="dark"][data-dark-theme*="dark"]，
+     按子串命中 <header> 与它外面那层 div，两处都解成 dark），而我们的 !important 把栏那一格
+     按面板档压回去了。落盘前在同一页现量到这一格的正反两形：把面块那条 color-scheme 摘掉
+     （其余声明原样），栏读 dark / 底 color(srgb 0.141176 0.0862745 0.203922 / 0.86) /
+     墨 rgb(244, 234, 255)，而 <body> 仍是 rgb(255, 246, 250)——栏跟着所在区域翻，整页不动。
+     出厂文件也在同一页出了图（真站抽检每次重出的那张：shots/spot-github-features-day.png，
+     窗口 1280x1500，白天档走反代；取样的口径是那条横 y=64–96 逐行、每 3px 取一列，共 13664 格，
+     按每通道 ±3 的容差认色）：白天枝那层粉面
+     rgb(255, 234, 243) 在这一带里一格都没有，众数是 rgb(51, 36, 66)——夜晚枝的面压在这页
+     自己的紫底渐变上解出来的色；同一带里有 441 格是夜晚那支的墨 rgb(244, 234, 255)，那是条上
+     的字。同一带在夜晚档那张里读到的是 rgb(39, 24, 59)，也是深李——两档下这条都跟着区域走。
+     它上面那条横幅 rgb(53, 56, 53)、下面那条锚点导航 rgb(18, 16, 17)（两处都是站家自涂）。
+     同一份出厂文件上的真站浮面普查（白天档，6 站全量到）也照着这一分法走通了：族内 9 块里，
+     站点没表态的那几块（如 w3schools 的 div.topnavcontainer）仍解成白天那支——面 bg 是那个 0.86
+     的白枝、墨 rgb(58, 43, 62)；而 docs.github 把自己那条 secondarybar 排成深色的地方，面与墨
+     一起翻到夜晚支（合成 #433550、墨 rgb(244, 234, 255)）。底与字同一处决定，所以没出现
+     "粉底配深字"或反过来那种错配；衬底那格逐块判到的 6 块最低 11.40:1，第一层归因 5 块自家粉地面
+     ／3 块站点自涂的根／1 块站点容器（2026-10-06 修过那一格：旧版看见 html/body 上有任何
+     background-image 就把停靠换成我们那三个值，把"body 涂了实心黑＋一条全透的图"记成衬我们的粉）。
+     这些读数都出在常驻的产物上（抽检每次重出这两张图，普查每次重跑这 6 站）：
+     两把普查都按 position 取对象，文档流里的常驻条落在它们的口径之外；抽检那一本的判据是正文可读性
+     与塌版，也不读"条解成了哪一支"。夹具那一侧有（.anti-dark-bar 直判＋两把反面刀：往档里补上页头那一截词根、把那条声明加回面块），
+     真站这一侧的尺子是 2026-10-05 补上的 tools/check-harmony.py（抽检每一本图都扫一遍）：它问的是
+     "上肤以后有没有一块粉孤零零立在别家的底中间"，牙是现量的——把那条分支声明加回面块（＝电池里
+     K32 那一刀的现场形状）重出 github-features 白天档，同一张链路读出 y=56–104 一段 99% 的孤立粉带并判红
+     （rc=1）；出厂文件下六站各 0 段。它不判贴边的段（画面里看不见另一侧），夜晚方向的反面控制落不进真站图，
+     两条盲区记在它自己抬头里。
+     所以这一格分成两半：浮动面继续钉（下面这条，词根只列浮层那几截），常驻条不钉，
+     让它就近继承所在区域的 color-scheme；站点没表过态时它一路继承到 §1 钉在 :root 上的面板档，
+     读数和从前一样。夹具里那两格 .ksChrome* 条（无声明祖先）就是这一句的证人，
+     由「玻璃面 navbar／topnav／id-…」那几行钉着；栏跟着区域翻那一格由
+     .anti-dark-bar 配直判（check-controls 的「常驻条跟着区域翻」）。
+     代价按方向写清楚：面板选"强制白天"而站点把某一片区域声明成 dark 时，那一块里的条是深李色，
+     而站点没自己涂底的地方仍是粉。这一张图里两半都量到了：条下面 y=336–900 那 240828 格里
+     粉系 0 格（GitHub 把 hero 那一段连底一起涂成了紫），而 <body> 那格读的是粉（上面那条 DOM 现读）。
+     这是"条属于那块区域"的另一面。浮动面板不受影响：mega-menu 展开时
+     仍是粉面（它浮在整页之上，衬的是我们的画布）。
+     这条为什么写成 :where(:is(…)…)：族副本守卫（load_family）取段的是"顶格两到四空格起手、
+     紧跟着一个开括号词根表"那几行，并要求它取出的每一段逐字相同；这一条不是族的副本
+     （词根比族少五截），所以选择器开头套一层 :where( 让它落在守卫的取段之外。
+     :where() 只把特异性归零，
+     !important 照样盖过站点的普通声明，而这一格要的正是"我们的声明赢过站点写的 dark"。
+     末尾五截 :not() 与族逐字相同：这条钉的范围 = 我们上色的范围，不包括那些按结构排除
+     让路的控件壳（给它们钉分支等于在没上色的面上改站家的 light-dark() 解）。 */
+  :where(:is(dialog, [popover], [role="dialog"], [role="alertdialog"], [aria-modal="true"],
+      [role="menu"], [role="listbox"], [role="tooltip"],
+      [class*="modal" i], [class*="dropdown" i], [class*="popover" i],
+      [class*="toast" i], [class*="tooltip" i],
+      [class*="fixed-btn" i]):not(body, html):not(button, svg):not(h1, h2, h3, h4, h5, h6):not(:has(> button)):not(:has(> * > button)),
+      :is(dialog, [popover], [role="dialog"], [role="alertdialog"], [aria-modal="true"],
+      [role="menu"], [role="listbox"], [role="tooltip"],
+      [class*="modal" i], [class*="dropdown" i], [class*="popover" i],
+      [class*="toast" i], [class*="tooltip" i],
+      [class*="fixed-btn" i]):not(body, html):not(button, svg):not(h1, h2, h3, h4, h5, h6):not(:has(> button)):not(:has(> * > button))
+      :is(input, textarea, select)) {
+    /* 面钉了档还要把面里的控件单独点名：color-scheme 不继承，站点可以在更深一层的控件
+       自己写 dark，而我们那些 light-dark() token 是在**使用它的那个元素**上重解的，于是出现
+       "白天粉面板里嵌一块夜晚纸的输入框"。2026-10-06 在 github.com 快搜那枚
+       input.prc-components-Input 上现读到：面 color-scheme=light／bg color(srgb 1 .917 .953/.86)，
+       框 bg=rgb(26,17,38)（我们的夜晚纸）＋边框 rgb(75,47,107)，而同一个框剥掉我们的 style 之后
+       bg=transparent（站家自己就是把框留空、由面板透出）——深色块与分档都是我们的。
+       这一截刻意与上面那一截同处一个 :where()（同一个规则块）：分成第二个块会被
+       「钉档这一格只住一处」的两把守卫当场打红（S29 按整块切、K31 按 :where(:is( 起手认）。
+       范围与上面那一截逐字相同（＝我们上色的范围），只多一截后代控件表。 */
+    color-scheme: var(--kScheme, light dark) !important;
+  }
+
+  /* 后代要单独点名：站点的作者源普通声明排在我们的用户源普通声明**之上**（Cascade 4 的
+     第 3 级 vs 第 2 级），只给容器写 color 时，菜单项自己写的白字照样赢。
+     用正列表而不是排除式：只扳说得出名字的排版元素。图标（svg 及其子节点）、语法高亮
+     （pre/code/kbd/samp）、站点自己涂了底的按钮都不碰——扳按钮的字色等于在站点没让路的
+     那块实心底色上换墨，那是另一种读不动。
+     上面那族选择器在这里抄了第二遍：两处必须逐字相同，否则"玻璃面"和"玻璃面上的字"
+     会各自漂移成一族。这条由 tools/check-controls.py 按整块字节相等钉住。 */
+  :is(dialog, [popover], [role="dialog"], [role="alertdialog"], [aria-modal="true"],
+      [role="menu"], [role="listbox"], [role="tooltip"],
+      [class*="modal" i], [class*="dropdown" i], [class*="popover" i],
+      [class*="toast" i], [class*="tooltip" i],
+      [class*="sidebar" i]:not(:has([class*="sidebar" i])), [class*="secondarybar" i],
+      [class~="topnav" i], [class^="topnav" i], [class*="topnav-" i],
+      [class*="topnav_" i], [class*="-topnav" i], [class*="_topnav" i],
+      [id*="topnav" i]:not([id*="below" i]), [id*="pagetop" i],
+      [class*="navbar" i], [class*="header" i]:not(:is(main, article) [class*="header" i]),
+      [class*="fixed-btn" i]):not(body, html):not(button, svg):not(h1, h2, h3, h4, h5, h6):not(:has(> button)):not(:has(> * > button))
+    :is(div, span, li, p, td, th, label, summary, dt, dd, del, s,
+        h1, h2, h3, h4, h5, h6) {
+    color: var(--ks-ink-1) !important;
+  }
+
+  /* 常驻条这一支要单独给 <a> 上墨：站点把导航字写成白（w3schools 第三条深蓝条上的白链接、
+     GitHub 锚点导航条同理），接管底之后白字压浅粉底是另一种读不动。这一支刻意只列页头／
+     导航／吸顶几截词根，不扩到 sidebar：夜晚档那条会把左栏链接压成浅字，而左栏的字坐在
+     站家自涂的浅底上。至于整页正文列夜间只剩 34 行自家底那一格，改判前就欠着
+     （改判前那份样式表在同一探针上量到 35 行，两跑在同一句上 FAIL），不是这一条漏下来的。
+     末尾那道 :not(body, html) 是 2026-10-04 补的，跟族上那道不是重复：分支自己抄了一遍词根，
+     族上的排除管不到它。GitHub 的 body 挂着 header-dark，于是"常驻条之下"就是"整页之下"。
+     同一格第一次落到盘上时量到过：夹具里 <body> 一挂 header-dark，条外那几枚控件的面
+     一起读成 rgba(0, 0, 0, 0)（btn／fixedBtn／btn_face 三本同时红），而它们都不在任何条下。
+     证人：夹具的 .ksChromeBarLink（条下，站点自涂白字）与 .ksBodyLink（条外，站点自涂
+     #1a7f37 带 !important）——一枚该换墨、一枚不许动。控件那一形的配对证人叫 .ksBarOutside
+     （条外，站点自涂 #2f81f7）。 */
+  :is([class~="topnav" i], [class^="topnav" i], [class*="topnav-" i],
+      [class*="topnav_" i], [class*="-topnav" i], [class*="_topnav" i],
+      [id*="topnav" i]:not([id*="below" i]), [id*="pagetop" i],
+      [class*="navbar" i], [class*="header" i]:not(:is(main, article) [class*="header" i])
+    ):not(body, html) a[href] {
+    color: var(--ks-ink-1) !important;
+  }
+
+  /* 常驻条上的控件不再叠第二层强调。2026-10-04 用户指着 GitHub 页头说"这个按钮的元素强调
+     还是太突兀了"，现量那一格：40px 高的 div.MarketingHeader-module__bar__mBSyE 被 header
+     词根穿上玻璃（面 color(srgb 1 0.9176 0.9529 / 0.86) + blur(16px) saturate(1.3)），
+     栏里 5 枚导航触发钮是 bg rgba(0,0,0,0) / color rgb(255,255,255) —— 白字压在自家粉底上，
+     和上面 a[href] 那一格同一个坏，只是它们写成 <button> 而不是 <a>；同一排里 Search/
+     Sign in/Sign up 三枚又各自穿着实心粉钮（§4b 的元素形面与链接形那条 !important 都够得着
+     它们），粉底之上再叠一颗比一颗重的粉，看着就是强调过头。
+     所以这一支两件事一起做：字改回自家墨（读得动），面改回透明（不再叠第二层）。
+     刻意只收说得出形状的控件，不收裸 a[href]：站点给"当前项"涂的那块高亮底是语义不是强调。
+     刻意不动 border 与 box-shadow：留着 §4a/§4b 那圈 1px 粉边，控件还认得出是控件，
+     只是不再是一块实心粉。
+     祖先那一截末尾同样带 :not(body, html)，理由与上面那条一样、而且更硬：这一支管的是
+     background-color，body 挂 header-dark 时漏掉这道排除就会把**全站**控件的面拍平。
+     换行位置也是量过的：下面那截 :is( 缩进六空格而不是四，因为 tools/knives.py 的 K03/K06 把
+     「行末一个右括号 + 四空格起头的 :is(」当成族里后代那一格的唯一定位点。 */
+  :is([class~="topnav" i], [class^="topnav" i], [class*="topnav-" i],
+      [class*="topnav_" i], [class*="-topnav" i], [class*="_topnav" i],
+      [id*="topnav" i]:not([id*="below" i]), [id*="pagetop" i],
+      [class*="navbar" i], [class*="header" i]:not(:is(main, article) [class*="header" i])
+    ):not(body, html)
+      :is(button, [type="button"], [type="submit"], [type="reset"], [role="button"],
+          a[href][class*="button" i], a[href][class*="btn" i]) {
+    color: var(--ks-ink-1) !important;
+    background-color: transparent !important;
+  }
+
+  /* 遮罩不在这一节：它已经有 §4b 那档"压暗 + 3px 虚焦"，读数被模态遮罩那项像素闸门
+     钉着；这里再叠一层玻璃等于把量过的东西换掉重测。 */
+
+  /* ---------- 5. 浏览器级装饰：滚动条始终被接管，开关只决定糖果色还是中性灰 ---------- */
+  ::selection {
+    background-color: color-mix(in srgb, var(--ks-sakura) calc(var(--kSparkle, 1) * 24%), transparent) !important;
+    color: var(--ks-ink-1) !important;
+  }
+
+  :focus-visible {
+    outline-color: color-mix(in srgb, var(--ks-sakura) calc(var(--kSparkle, 1) * 100%),
+                                            var(--ks-neutral)) !important;
+    outline-offset: 2px;
+  }
+
+  ::-webkit-scrollbar { width: 11px; height: 11px; }
+  ::-webkit-scrollbar-track { background: var(--ks-canvas-1); }
+  ::-webkit-scrollbar-corner { background: var(--ks-canvas-1); }
+  ::-webkit-scrollbar-thumb {
+    background: color-mix(in srgb, var(--ks-sakura) calc(var(--kSparkle, 1) * 80%), var(--ks-neutral));
+    border-radius: var(--ks-r-lg);
+    border: 2px solid var(--ks-canvas-1);
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: color-mix(in srgb, var(--ks-head) calc(var(--kSparkle, 1) * 90%), var(--ks-neutral));
+  }
+
+  /* ---------- 6. 动效：只挂可交互元素，不用 * transition ---------- */
+  a, button, [role="button"], summary, input, select, textarea {
+    transition: transform var(--ks-pace) ease-out, box-shadow var(--ks-pace) ease-out;
+  }
+
+  a:hover, button:hover, [role="button"]:hover, summary:hover {
+    transform: translateY(calc(-2px * var(--kMotion, 1)));
+  }
+
+  a:active, button:active, [role="button"]:active {
+    transform: translateY(0) scale(calc(1 - 0.02 * var(--kMotion, 1)));
+  }
+
+  /* ---------- 7. 降级与红线 ---------- */
+  @media (prefers-reduced-motion: reduce) {
+    :root { --ks-pace: 0ms; }
+    a, button, [role="button"], summary, input, select, textarea {
+      transition: none !important;
+    }
+    a:hover, button:hover, [role="button"]:hover, summary:hover,
+    a:active, button:active, [role="button"]:active {
+      transform: none !important;
+    }
+  }
+
+  /* 系统要求"少用透明"时：整块退回实心板——不只撤虚焦，那 14% 的透明度缺口也一并归零。
+     走的是面板同一个旋钮（--kGlass: 0），因为"关档 = 一面实心板、字还读得动"这一档已经被
+     像素闸门第十项量过，这里只是把系统偏好接到那个已被量过的值上，不新造一种没量过的材质。
+     !important 是给开关让位的：用户的开关值由 Stylus 注入成 --kGlass，它落在哪一格我们
+     没有通道去验（扩展那条路装没装只有本机知道），可达性偏好要赢过一次不确定的位置，
+     只能靠自己重要。
+     口径写明白：无头 Chrome 没有模拟这个偏好的命令行通道——量过，加 --force-prefers-reduced-
+     transparency 那一趟 matchMedia('(prefers-reduced-transparency: reduce)') 仍是 false、
+     虚焦也没撤。所以闸门钉的是"这一档路由到的值就是关档那个值"；媒体查询本身在真桌面上
+     生效与否，只能拿装了系统偏好的浏览器复检。 */
+  @media (prefers-reduced-transparency: reduce) {
+    :root { --ks-glass-blur: none; --kGlass: 0 !important; }
+  }
+
+  /* 系统强制对比 / 高对比偏好下：撤掉叠色膜、阴影与光晕，只留形状 */
+  @media (forced-colors: active), (prefers-contrast: more) {
+    html::before { display: none !important; }
+    body { background-image: none !important; }
+    h1, h2, h3, h4 { text-shadow: none !important; }
+    dialog::backdrop,
+    [class*="backdrop" i][class*="dialog" i],
+    [class*="backdrop" i][class*="modal" i],
+    [class*="mask" i][class*="dialog" i],
+    [class*="mask" i][class*="popup" i] { backdrop-filter: none !important; }
+    button, [type="button"], [type="submit"], [role="button"], .btn,
+    [class*="button"], dialog, [role="dialog"], [class*="card"], [class*="modal"] {
+      box-shadow: none !important;
+    }
+  }
+
+  @media print {
+    /* 纸上没有"底下滚过去的内容"可透，而 §4c 那批强制墨色在夜晚档是浅色——打印时
+       浮层整个退回纸白墨黑。下面那族选择器是 §4c 的副本，逐字相同由
+       tools/check-controls.py 钉住：副本漂了就等于一半浮层还在纸上透着。 */
+    :root { --ks-glass-blur: none; }
+    :is(dialog, [popover], [role="dialog"], [role="alertdialog"], [aria-modal="true"],
+      [role="menu"], [role="listbox"], [role="tooltip"],
+      [class*="modal" i], [class*="dropdown" i], [class*="popover" i],
+      [class*="toast" i], [class*="tooltip" i],
+      [class*="sidebar" i]:not(:has([class*="sidebar" i])), [class*="secondarybar" i],
+      [class~="topnav" i], [class^="topnav" i], [class*="topnav-" i],
+      [class*="topnav_" i], [class*="-topnav" i], [class*="_topnav" i],
+      [id*="topnav" i]:not([id*="below" i]), [id*="pagetop" i],
+      [class*="navbar" i], [class*="header" i]:not(:is(main, article) [class*="header" i]),
+      [class*="fixed-btn" i]):not(body, html):not(button, svg):not(h1, h2, h3, h4, h5, h6):not(:has(> button)):not(:has(> * > button)),
+    :is(dialog, [popover], [role="dialog"], [role="alertdialog"], [aria-modal="true"],
+      [role="menu"], [role="listbox"], [role="tooltip"],
+      [class*="modal" i], [class*="dropdown" i], [class*="popover" i],
+      [class*="toast" i], [class*="tooltip" i],
+      [class*="sidebar" i]:not(:has([class*="sidebar" i])), [class*="secondarybar" i],
+      [class~="topnav" i], [class^="topnav" i], [class*="topnav-" i],
+      [class*="topnav_" i], [class*="-topnav" i], [class*="_topnav" i],
+      [id*="topnav" i]:not([id*="below" i]), [id*="pagetop" i],
+      [class*="navbar" i], [class*="header" i]:not(:is(main, article) [class*="header" i]),
+      [class*="fixed-btn" i]):not(body, html):not(button, svg):not(h1, h2, h3, h4, h5, h6):not(:has(> button)):not(:has(> * > button)) * {
+      background-color: #fff !important;
+      backdrop-filter: none !important;
+      color: #000 !important;
+    }
+    html::before { display: none !important; }
+    h1, h2, h3, h4 { text-shadow: none !important; }
+    html {
+      background: #fff !important;
+      color: #000 !important;
+    }
+    body, [class*="card"], [class*="modal"], dialog, [role="dialog"] {
+      background-image: none !important;
+      box-shadow: none !important;
+    }
+    ::-webkit-scrollbar-thumb { background: var(--ks-neutral); }
+
+    /* 给裸控件兜的那层粉底在纸上会糊成一片：打印时表格与控件退回纸白墨黑 */
+    table, th, td, caption, dialog, button, input, textarea, select,
+    ::file-selector-button {
+      background-color: #fff !important;
+      background-image: none !important;
+      color: #000 !important;
+      border-color: #999 !important;
+    }
+  }
+}

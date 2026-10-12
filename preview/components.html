@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>组件夹具 · 典型站点（站点自己不设背景）</title>
+<link rel="stylesheet" href="skin.css">
+<style>
+  /* 夹具自己的排版：不约束的话一整排内联控件会顶出视口，
+     那会被误读成"样式表把布局搞坏了"。与皮肤无关。 */
+  form { max-width: 1140px; }
+  form label { display: inline-block; margin: 0 14px 8px 0; }
+  /* 典型站点都会给自己写一条字体，所以这里也写一条（衬线），
+     用来验皮肤的 html/body 覆盖真能压住它——不设这行等于没测这一面。 */
+  body { font-family: Georgia, "Times New Roman", serif; }
+  /* 两个对照组：站点自己排过边框的表格、自己写过底色的字段。
+     皮肤那节兜底样式刻意不加 !important，就是为了让这两处原样赢回去；
+     谁哪天给它们补上 !important，探针会当场红。 */
+  table.own { border-collapse: collapse; }
+  table.own th, table.own td {
+    border: 3px dashed #2b6cb0; padding: 2px 14px; color: #143d6b;
+  }
+  .own-field input {
+    background: #dff3ff; border: 2px solid #2b6cb0; color: #143d6b;
+  }
+  /* dialog 非模态时按 UA 是绝对定位的，不占流内空间，会把后面的取证格整个盖住
+     （实测 弹窗 y1835–1998 正好压在第七节上，两格互相污染）。放回流内（relative 保留
+     原来的居中与 fit-content 宽），让"弹窗压在页面底衬上"和"浮层压在密排正文上"各量各的。 */
+  dialog { position: relative; }
+  /* 浮层取证格（第七节）：站点自己排过的白底黑字正文，上面压一个深底白字的菜单。
+     §4c 会把这块菜单扳成半透玻璃并连墨色一起接管，所以"透过玻璃还读不读得动"
+     得在像素上量一次——CSS 里写了什么不等于画出了什么。这里的配色是刻意最坏的：
+     白底黑字给玻璃当"底下滚过去的内容"，菜单自己写的 #fff 是被接管的那个对象。 */
+  .stage { position: relative; margin: 12px 0; }
+  .site-doc {
+    background: #fff; color: #111; padding: 12px 16px;
+    font: 13px/1.8 Georgia, serif;
+  }
+  .site-menu {
+    position: absolute; left: 250px; top: 46px; width: 330px;
+    background: #1c1c1c; color: #fff; border: 1px solid #000; padding: 10px;
+  }
+  .site-menu div { color: #fff; padding: 7px 10px; }
+  /* 第二格浮层：站点自己的浅色提示条压在深色代码块上。
+     两格不是为了好看——"透出多少"这一问在像素上只在纸和底拉开时才有读数：
+     白天档的纸几乎等于白，压在第七节的白底正文上两个状态差不到几个级；
+     夜晚档的纸几乎等于黑，压在下面的深色代码块上同样分不开。反过来各拉得开。
+     所以每一档都有一格能开火、另一格天然是它的负控制。 */
+  .site-code {
+    background: #101014; color: #e8e8f0; padding: 10px 14px;
+    font: 12px/1.7 ui-monospace, Menlo, monospace; white-space: pre-wrap;
+  }
+  .site-toast {
+    position: absolute; left: 320px; top: 54px; width: 340px;
+    background: #fff; color: #111; border: 1px solid #000; padding: 12px 14px;
+  }
+  /* 站点写在下层子项上的中间灰：刻意挑中间调是因为它在两种纸上都不够——
+     白天档的浅纸（L≈0.85）和夜晚档的深纸（L≈0.03）各要 ≥4.5 倍，中间灰（L≈0.26）
+     两边都掉在 4.5 以下。菜单那一格用的是站点常见的白字，只在白天档失配；
+     这一格两个档都失配，所以"后代那条规则删掉会不会红"在两档都有答案。 */
+  .site-toast .line { color: #8a8a8a; display: block; }
+  /* 第九格：五块真浮层（A/B/C/D/E）只差"站点用什么名字宣告自己是浮层"，另两块 F/G 是族
+     不该碰的形状。C/D/E 三块的配色与排版
+     一字不差，唯一的区别是钩子——C 只挂 GitHub Primer 那种哈希类名（服务端 HTML 里
+     逐字取来的 `Primer_Brand__ActionMenu-module__ActionMenu___xLxGU` 加
+     `data-testid="ActionMenu"`），族追不上它，所以它该原样保持站点那块实心板；
+     D/E 分别只挂 aria-modal 与 role=alertdialog，族里那两个语义属性就是为它们加的。
+     A/B 用逐字取来的 GitHub 类名值，验证子串那一支在真实命名下确实吃得到。 */
+  .gh-ground {
+    background: #fff; color: #111; padding: 12px 16px;
+    font: 13px/1.8 Georgia, serif; min-height: 300px;
+  }
+  .gh-panel {
+    position: absolute; width: 250px; background: #f6f8fa; color: #24292e;
+    border: 1px solid #d0d7de; padding: 10px 12px; font: 12px/1.6 sans-serif;
+  }
+  .gh-panel span { display: block; color: #24292e; }
+  /* F/G：GitHub 侧栏折叠钮和它右箭头图标，类名里确实有 dropdown 这个词根
+     （`NavDropdown-module__button__PEHWX` / `…buttonIcon__Tkl8_`，逐字取自服务端 HTML），
+     但一个是控件一个是图标，不是浮层。F 故意只排 color 不排背景——真站那一格就是这样，
+     Primer 给这个按钮写的是 background:0 0 加 border:0（底色明确留空，逐字取自真站样式表）。族末尾的 :not(button, svg) 少了这一项，
+     这两块就会在开关两趟之间变色，像素闸门点得出。
+     G 的真尺寸是 16px（octicon 的出厂值），这里放到 72 只因为取样盒要按每 2px 取一点、
+     还得向内缩 6px 才够 200 个点——被验的是"svg 这个形状吃不吃族"，与尺寸无关。
+     F 的字色写成 light-dark 那一对（Primer 的 fgColor 本来就是两档：#24292e / #c9d1d9），
+     因为取样要在这个档里认得出墨：固定 #24292e 在夜晚档会和深底撞成一片，那"两趟相同"
+     就成了白捡的。G 用同一个道理：octicon 在真站上就是 fill="currentColor"，跟着按钮的
+     字色走，所以这里也让它两档各自有一头墨——量过，写死 #24292e 时 P08 落刀后的夜晚档
+     只剩 0.026 的墨距，判据便去报"取不到墨"而不是"被开关动到了"。 */
+  .gh-f {
+    position: absolute; left: 580px; top: 172px; width: 250px; text-align: left;
+    color: light-dark(#24292e, #c9d1d9); font: 12px/1.6 sans-serif; padding: 10px 12px;
+  }
+  .gh-g { position: absolute; left: 866px; top: 30px; color: light-dark(#24292e, #c9d1d9); }
+  .gh-c { left: 20px; top: 26px; }
+  .gh-d { left: 300px; top: 26px; }
+  .gh-e { left: 580px; top: 26px; }
+  .gh-a { left: 20px; top: 172px; }
+  .gh-b { left: 300px; top: 172px; }
+  /* 第十格：站点自己排过的**常驻浮动条**（吸顶条、侧栏、悬浮钮），类名逐字取自真站
+     服务端 HTML——w3-sidebar / topnavcontainer（w3schools）、DocsSecondaryBar_bar
+     （docs.github.com）、Tutorial_fixed-btn（runoob）。它们和第九格的区别是：
+     不是"临时弹出来的一层"，而是一直浮在内容上，所以底下永远有字在滚。
+     A/B/C/D 四块在族里（新加的四个词根各追一个），E/F/G 三块族刻意不追：
+     E 挂 navbar、F 挂 header（这两个词根在真站普查里浮动面收益≈0 而文档流误伤成批，
+     决定不追——那笔账记在样式表里，这两块就是它的尺子），
+     G 是一个 <button> 外壳挂 fixed-btn 词根，被族末尾的 :not(button, svg) 排在外面。
+     B 的墨写成 #fff：w3schools 那条吸顶nav 的白字压在 rgb(40,42,53) 的深蓝底上，
+     而我们的面两档都把这个背景换成了浅粉底——白字不跟着换就是一块 1.1:1 的读不动，
+     所以这一格是"后代那条 color 有没有生效"在像素上的唯一证人（族删掉后代那一整条，
+     这一格立刻红）。其余块的墨写成 light-dark 那一对，理由和 gh-f 一样：
+     反白字撞浅底能报红，但浅底撞浅字会连墨都取不到，判据就会报错了对象。 */
+  .ch-ground {
+    background: #fff; color: #111; padding: 12px 16px;
+    font: 13px/1.8 Georgia, serif; min-height: 320px;
+  }
+  .ch-chip {
+    position: absolute; width: 250px; padding: 10px 12px;
+    font: 12px/1.6 sans-serif; border: 1px solid #d0d7de;
+  }
+  .ch-chip span { display: block; }
+  .ch-a { left: 20px; top: 26px; width: 210px; background: #fff; }
+  .ch-b { left: 250px; top: 26px; width: 300px; background: #282a35;
+          border-color: #282a35; }
+  .ch-c { left: 580px; top: 26px; background: #fff; }
+  .ch-d { left: 866px; top: 26px; width: 170px; background: #fff; }
+  .ch-e { left: 20px; top: 210px; width: 300px; background: #efeff1; }
+  .ch-f { left: 350px; top: 210px; width: 300px; background: #f6f8fa; }
+  .ch-g { left: 680px; top: 210px; text-align: left; background: #2ea44f;
+          border-color: #2ea44f; color: #fff; }
+  /* 站点墨按真站各条自己写的那一对取，并且**不用 light-dark**：这四块板子的底是站点自己
+     涂的浅色（w3schools 白侧栏、GitHub 白次级栏），两档都不会翻，墨跟着翻就成 1.1:1。
+     gh-f 用 light-dark 是因为它没有自己的底、底下是我们的画布；这一格不是。 */
+  .ch-a span, .ch-c span, .ch-d span { color: #24292e; }
+  .ch-b span { color: #fff; }
+  .ch-e, .ch-f { color: #24292e; }
+</style>
+</head>
+<body>
+<nav>
+  <a href="#">首页</a> <a href="#">文档</a> <a href="#">示例</a>
+  <input type="search" placeholder="搜索 Search…">
+  <button>登录</button>
+</nav>
+
+<h1>樱花与星夜 · 组件夹具</h1>
+<p>这一页故意<strong>不设 body 背景</strong>，用来验底衬：样式表只画 <code>html</code>，
+站点自己不涂色时粉白渐变才该露出来。正文中文与 Latin <em>Italic</em> 混排，看圆体回落。</p>
+
+<h2>二、标题与正文层次</h2>
+<p>次级文字 <span style="color:#5b4862">（此处模拟站点自带色）</span>、
+<mark>高亮片段</mark>、<a href="https://example.com">一个链接</a>、
+<kbd>⌘</kbd>+<kbd>K</kbd>、以及 <small>脚注小字</small>。</p>
+<h3>三级标题（长文里的分节）</h3>
+<p>Kawaii 的关键不是把每一种颜色都调成粉色，而是让层级仍读得出来。
+这一段够长，用来检查行距、字距与滚动条在长页里的样子。The quick brown fox
+jumps over the lazy dog 0123456789.</p>
+<blockquote>引用块：站点自己的边框与底色应当保留，我们只加圆角。</blockquote>
+<hr>
+
+<h2>三、表格</h2>
+<table>
+  <caption>Token 一览（站点什么边框都没画，靠样式表兜底）</caption>
+  <thead><tr><th>Token</th><th>白天</th><th>夜晚</th><th>用途</th></tr></thead>
+  <tbody>
+    <tr><td>canvas-1</td><td>#fff6fa</td><td>#1a1126</td><td>页面底衬</td></tr>
+    <tr><td>ink-1</td><td>#3a2b3e</td><td>#f4eaff</td><td>正文</td></tr>
+    <tr><td>link</td><td>#96204f</td><td>#f3a9e6</td><td>链接</td></tr>
+  </tbody>
+</table>
+
+<h3>对照组：站点自己排过边框的表</h3>
+<table class="own">
+  <thead><tr><th>这一张</th><th>不该被动</th></tr></thead>
+  <tbody><tr><td>蓝色虚线</td><td>是站点自己的</td></tr></tbody>
+</table>
+
+<h2>四、代码块（不该被洗色）</h2>
+<pre><code>/* 语法高亮由站点提供：这里模拟多色 token */
+.kawaii { color: #d4508f; background: #1e1e2e; }</code></pre>
+
+<h2>五、表单全控件</h2>
+<form>
+  <label>文本 <input type="text" value="M PLUS Rounded 1c"></label>
+  <label>邮箱 <input type="email" value="hi@example.com"></label>
+  <label>数字 <input type="number" value="7"></label>
+  <label>日期 <input type="date" value="2026-09-28"></label>
+  <label>颜色 <input type="color" value="#d4508f"></label>
+  <label>滑块 <input type="range" value="60"></label>
+  <label>复选 <input type="checkbox" checked> <input type="radio" name="r" checked></label>
+  <label>下拉
+    <select><option>--请选择--</option><option selected>樱花粉</option><option>星夜紫</option></select>
+  </label>
+  <label>搜索 <input type="search" value="kawaii"></label>
+  <label>密码 <input type="password" value="123456"></label>
+  <label>时间 <input type="time" value="18:40"></label>
+  <label>月份 <input type="month" value="2026-09"></label>
+  <label>多选 <select multiple size="2"><optgroup label="暖色">
+      <option selected>樱花粉</option><option>蜜桃橙</option></optgroup>
+      <optgroup label="冷色"><option>星夜紫</option></optgroup></select></label>
+  <label>禁用下拉 <select disabled><option>不可选</option></select></label>
+  <label>文件 <input type="file"></label>
+  <textarea rows="3" placeholder="多行输入…"></textarea>
+  <label class="own-field">站点自带底色的字段
+    <input type="text" class="own" value="这块底色归站点"></label>
+  <p><button type="submit">提交</button> <button type="reset">重置</button>
+     <button type="button" disabled>禁用态</button></p>
+
+  <fieldset>
+    <legend>成组控件</legend>
+    <label>进度 <progress value="0.62" max="1"></progress></label>
+    <label>仪表 <meter min="0" max="100" low="30" high="70" value="86">86%</meter></label>
+    <label>带候选 <input list="langs" placeholder="输入 s"><datalist id="langs">
+      <option value="SVG"></option><option value="CSS"></option></datalist></label>
+    <label>只读 <input type="text" value="不可编辑" readonly></label>
+    <label>禁用输入 <input type="text" value="灰掉了" disabled></label>
+    <label>不确定进度 <progress max="1"></progress></label>
+    <output>合计：42</output>
+  </fieldset>
+  <details open><summary>展开的 details（三角标记该是粉的）</summary><p>里面的正文照旧。</p></details>
+  <p>行内语义：<abbr title="HyperText Markup Language">HTML</abbr>、<ins>插入</ins>、
+     <del>删除</del>、<samp>stdout</samp>、<code>inline code</code>。</p>
+</form>
+
+<h2>六、卡片与图</h2>
+<div class="cards">
+  <div class="card"><img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='80'%3E%3Crect width='120' height='80' fill='%23f7a8c4'/%3E%3Ccircle cx='60' cy='40' r='22' fill='%23fff'/%3E%3C/svg%3E" alt="占位图"><h3>卡片标题</h3><p>阴影与圆角挂在这一层。</p></div>
+  <div class="card"><img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='80'%3E%3Crect width='120' height='80' fill='%23b89adf'/%3E%3Crect x='30' y='20' width='60' height='40' fill='%23222'/%3E%3C/svg%3E" alt="占位图 2"><h3>深色图</h3><p>图不该被涂粉，只该被切圆角。</p></div>
+</div>
+
+<dialog open>
+  <h3>弹窗（dialog 元素）</h3>
+  <p>它必须仍然看得见边界，且文字对比度不被叠色膜吃掉。</p>
+  <button>知道了</button>
+</dialog>
+
+<h2>七、浮层压在站点自己的内容上</h2>
+<div class="stage">
+  <div class="site-doc">
+    <p>站点正文第一段：黑字白底，密排到足以给浮层当"底下滚过去的内容"。樱花与星夜，
+       粉白与粉紫，一层皮盖在别人的结构上——这一格的存在是为了让"透"这件事可测量，
+       而不是只能靠肉眼在截图上觉得"好像有点透出底下的字"。下面这几行刻意排得密，
+       笔画之间的白缝会跟着一起透上来，那才是浮层玻璃化真正的风险：底噪变高、字变糊。</p>
+    <p>站点正文第二段：同样的密排文字再来一行，保证菜单压住的那块里有字、也有白缝。
+       浮层在左边偏右一点的位置，正好盖住这一段的中部；如果皮肤只扳透背景而没接管墨色，
+       菜单里那几行站点自己写的白字就会在半透的面上糊成一团——所以这一格同时判两件事：
+       透过玻璃看到的纸够不够干净，以及落在纸上的字归不归我们。</p>
+  </div>
+  <div class="site-menu" role="menu">
+    <div role="menuitem">菜单项甲</div>
+    <div role="menuitem">菜单项乙，这一行的字比上面那行长一些</div>
+    <div role="menuitem">菜单项丙</div>
+  </div>
+</div>
+
+<h2>八、浅色浮层压在深色块上</h2>
+<div class="stage">
+  <pre class="site-code">/* 站点自己的深色代码块：密集、高对比，专门给上面那层浅色浮层当底 */
+function blend(front, back, a) {            // 前景按 α 压在背景上
+  var r = front.r * a + back.r * (1 - a);   // 这就是浏览器给玻璃做的事
+  var g = front.g * a + back.g * (1 - a);   // 逐通道、线性、不看颜色名
+  var b = front.b * a + back.b * (1 - a);
+  return { r: r, g: g, b: b, a: 1 };
+}
+function veil(px, tint, pct) {              // 我们的叠色膜：同一套算式
+  return blend(tint, px, pct);
+}</pre>
+  <div class="site-toast">
+    <span class="line">站点自己写的浅色浮层：底下是密排的等宽字，笔画缝会跟着一起透上来。</span>
+    <span class="line">这一格的每一行文字都挂在被后代点名的元素上，好让"后代那条规则"有东西可管。</span>
+    <span class="line">白天档这一格该透出深色底噪，夜晚档这一格几乎透不出东西。</span>
+  </div>
+</div>
+
+<h2>九、站点用什么名字宣告自己是浮层</h2>
+<div class="stage">
+  <div class="gh-ground">
+    站点正文：这一块的密度和上面两格一样，是给五块浮层当"底下滚过去的内容"的取证对象。
+    樱花与星夜压在别人的结构上，玻璃化之后能不能读，只有把面压在字上才量得出来——
+    所以这里排满，笔画缝、行距、标点都要跟着透上来。
+    第二行同样密排，保证五块面板底下都有字可透，而不是某一块恰好压在空白上。
+    第三行再来一遍：面板是五块，底噪只能有一块，多出来的那些面板必须共用这一段。
+    第四行、第五行：这一段故意写得比面板高，这样面板上沿压到的和下沿压到的都是字。
+    第六行：如果族把不该接管的东西也扳了，这一段的像素会跟着变——那是另一项在管的事。
+    第七行：这一格里没有卡片也没有表格，底就是密排文字，上面压着七块东西——读数只归因到它们。
+  </div>
+  <div class="gh-panel gh-c Primer_Brand__ActionMenu-module__ActionMenu___xLxGU" data-testid="ActionMenu">
+    <span>C：只有哈希类名，族追不上 → 该保持站点那块实心板</span>
+  </div>
+  <div class="gh-panel gh-d" aria-modal="true">
+    <span>D：只挂 aria-modal → 新加的那个属性选择器吃到了</span>
+  </div>
+  <div class="gh-panel gh-e" role="alertdialog">
+    <span>E：只挂 alertdialog → 另一个新属性吃到了</span>
+  </div>
+  <div class="gh-panel gh-a Box Box--overlay d-flex flex-column anim-fade-in fast hx_rsm-dialog hx_rsm-modal">
+    <span>A：GitHub 弹窗面，逐字类名，靠 modal 命中</span>
+  </div>
+  <div class="gh-panel gh-b Popover-message Popover-message--bottom-left Popover-message--large Box color-shadow-large">
+    <span>B：GitHub 悬停卡，逐字类名，靠 popover 命中</span>
+  </div>
+  <button class="gh-f NavDropdown-module__button__PEHWX">F：折叠钮，词根撞上了但它不是浮层</button>
+  <svg class="gh-g octicon octicon-triangle-right NavDropdown-module__buttonIcon__Tkl8_"
+       width="72" height="72" viewBox="0 0 16 16" aria-hidden="true">
+    <path fill="currentColor" d="M0 0 L16 8 L0 16 Z"></path>
+  </svg>
+</div>
+
+<h2>十、站点自己排过的常驻浮动条</h2>
+<div class="stage">
+  <div class="ch-ground">
+    常驻浮动条的底：这一段的密度和第九格一样，因为这一格要量的正是"一直浮在内容上的那条
+    板子，底下有字在滚时读不读得动"。樱花与星夜把侧栏、吸顶条、悬浮钮都扳成同一种玻璃面，
+    代价是站点原本写死在这些条上的墨也得跟着换——不换就是浅粉底上的白字，读了个寂寞。
+    第二行同样密排：四块该玻璃化的面板和三块族刻意不追的形状共用这一段底，
+    所以"玻璃溢到了不该管的那一块"在这段像素上是藏不住的。
+    第三行：E 挂 navbar、F 挂 header，这两个词根在真站普查里浮动面收益接近零、
+    文档流里的误伤却成批，所以族没有追它们——它们开关两趟必须一字节都不动。
+    第四行：G 是一个真的 &lt;button&gt;，类名里带 fixed-btn 这个词根，
+    和第九格那对 NavDropdown 按钮是同一类形状，被族末尾的排除式排在外面。
+    第五行、第六行：底一直铺到第七行的位置，保证每一块面板的上沿和下沿压到的都是字。
+    第七行：这一段没有卡片也没有表格，底就是密排文字，上面压着七块东西——
+    读数只归因到它们。
+  </div>
+  <div class="ch-chip ch-a w3-sidebar SiteSidebar">
+    <span>A：站点固定侧栏（w3schools 逐字类名）→ sidebar 词根追到了</span>
+    <span>侧栏里第二行：菜单项的墨归谁，看后代那条规则在不在。</span>
+  </div>
+  <!-- 这一块的类名顺序是承重的：topnav 词根只认落在词边界上的六截形式，而
+       [class^="topnav" i] 看的是**属性值的起始**——站点那条逐字类名必须写在最前面，
+       真站也正是这么写的（w3schools 服务端 HTML 里就是 class="topnavcontainer "）。
+       把夹具自己的 ch-chip/ch-b 挪到前面，这块就不再是玻璃，
+       像素闸门红在"开关两趟一字未动"那一格上（实测过一次，就是这么红的）。 -->
+  <div class="topnavcontainer SiteTopNav ch-chip ch-b">
+    <span>B：站点吸顶条（w3schools 逐字类名，站点墨 #fff）→ topnav 词根追到了</span>
+    <span>浅粉底上的白字读不动，所以这一格要看到墨被换走。</span>
+  </div>
+  <div class="ch-chip ch-c DocsSecondaryBar_bar">
+    <span>C：文档次级栏（docs.github.com 逐字类名）→ secondarybar 词根追到了</span>
+  </div>
+  <div class="ch-chip ch-d Tutorial_fixed-btn">
+    <span>D：悬浮小钮外壳（runoob 逐字类名）→ fixed-btn 词根追到了</span>
+  </div>
+  <div class="ch-chip ch-e SiteNavbar navbar">
+    <span>E：navbar 词根，族刻意没追 → 开关两趟该一字节都不动</span>
+  </div>
+  <div class="ch-chip ch-f Header_stickyContainer header">
+    <span>F：header 词根，族刻意没追 → 同上</span>
+  </div>
+  <button class="ch-chip ch-g Tutorial_fixed-btn">G：&lt;button&gt; 挂着 fixed-btn，被 :not 排在外面</button>
+</div>
+
+<footer><p>页脚 · <a href="#">次级链接</a></p></footer>
+
+<!-- 字体探针：只测量不改动，结果写进下面这个 hidden 节点，供 --dump-dom 取。
+     皮肤本身一行 JS 都没有；这段属于夹具，作用是让"圆体到底有没有落地"
+     可以不依赖手工 devtools 查。 -->
+<output id="font-probe" hidden></output>
+<script>
+(function () {
+  var c = document.createElement("canvas").getContext("2d");
+  var TXT = "Handgloves Milly 1848 AZ";
+  var SENTINEL = "1px sentinel-zz";
+  function width(list) {
+    c.font = SENTINEL;                       // 先落一个已知值：解析失败时它不会被换掉
+    c.font = size + " " + list.join(", ");
+    if (c.font === SENTINEL) return -1;
+    return +c.measureText(TXT).width.toFixed(2);
+  }
+  function stackOf(sel) { return getComputedStyle(document.querySelector(sel)).fontFamily; }
+  function comp(sel, prop) {
+    var el = document.querySelector(sel);
+    return el ? getComputedStyle(el)[prop] : "无此元素";
+  }
+  var size = getComputedStyle(document.querySelector("h1")).fontSize;
+  var stack = stackOf("h1");
+  var parts = stack.split(",").map(function (s) { return s.trim(); });
+  var OWN_BG = "rgb(223, 243, 255)";           // 夹具里那条 #dff3ff，站点自己的
+  var bareBg = comp("input[type=text]", "backgroundColor");
+  var res = {
+    bodyStack: stack,
+    siteFontLeakedThrough: /Georgia|Times/i.test(stack),
+    codeKeepsMono: /mono/i.test(stackOf("code")),
+    preKeepsMono: /mono/i.test(stackOf("pre")),
+    inputUntouched: /mono|arial/i.test(stackOf("input")),
+    inputStack: stackOf("input"),
+    firstMatters: Math.abs(width(parts) - width(parts.slice(1))) > 0.01,
+    sentinelIsNoop: Math.abs(width(["NOT-A-REAL-ZZZ", "monospace"]) - width(["monospace"])) < 0.01,
+    // 层叠方向：站点排过的必须赢回去，什么都没写的才拿到兜底
+    siteTableKeepsOwnBorder: comp("table.own td", "borderBottomStyle").indexOf("dashed") >= 0
+                             && comp("table.own td", "borderBottomWidth") === "3px",
+    bareTableGotOurRule: comp("table:not(.own) td", "borderBottomStyle").indexOf("solid") >= 0
+                         && comp("table:not(.own) td", "borderBottomWidth") === "1px",
+    siteFieldKeepsOwnBg: comp(".own-field input", "backgroundColor") === OWN_BG,
+    bareFieldGotOurBg: bareBg !== OWN_BG && bareBg !== "rgba(0, 0, 0, 0)" && bareBg !== "transparent",
+    ownFieldBorder: comp(".own-field input", "borderTopWidth"),
+    bareTableDetail: comp("table:not(.own) td", "borderBottomWidth") + "/"
+                     + comp("table:not(.own) td", "borderBottomStyle")
+  };
+  document.getElementById("font-probe").textContent = JSON.stringify(res);
+})();
+</script>
+</body>
+</html>
