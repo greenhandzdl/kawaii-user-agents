@@ -254,12 +254,21 @@ class Cdp {
   constructor(ws) {
     this.ws = ws; this.n = 0; this.waiters = new Map(); this.events = [];
     this.net = [];   // Network.* 另存一份：waitEvent 会按名字摘走 events，那一格不该把取数失败的历史一起摘走
+    this.req = new Map();   // 请求号→URL 要按**全程**记：只数触发器之后失败的跳，但那跳多半在触发器之前就发出去了
     ws.addEventListener("message", (e) => {
       const msg = JSON.parse(e.data);
       if (msg.id && this.waiters.has(msg.id)) {
         const w = this.waiters.get(msg.id); this.waiters.delete(msg.id);
         msg.error ? w.bad(new Error(msg.error.message)) : w.ok(msg.result);
-      } else if (msg.method) { this.events.push(msg); if (msg.method.startsWith("Network.")) this.net.push(msg); }
+      } else if (msg.method) {
+        this.events.push(msg);
+        if (msg.method.startsWith("Network.")) {
+          this.net.push(msg);
+          // 请求号→URL 按全程存：loadingFailed 里没有 URL，而那一跳常在触发器之前就发出去了
+          if (msg.method === "Network.requestWillBeSent")
+            this.req.set(msg.params.requestId, (msg.params.request || {}).url || "?");
+        }
+      }
     });
   }
   static async connect(url) {
@@ -288,13 +297,11 @@ class Cdp {
   // 旧版两个读法印在同一行。按「没读到不并入没有」的既有纪律，这一格单独成档。
   // 只认 Fetch／XHR 两型：Script 那一型在真站上多半是站家的统计脚本，收进来会把每一站都判成断。
   failedFeeds(from) {
-    const url = new Map();
     const out = [];
     for (const e of this.net.slice(from)) {
       const q = e.params || {};
-      if (e.method === "Network.requestWillBeSent") url.set(q.requestId, (q.request || {}).url || "?");
-      else if (e.method === "Network.loadingFailed" && /^(Fetch|XHR)$/.test(q.type || ""))
-        out.push(q.type + ":" + String(url.get(q.requestId) || "?").slice(0, 64) +
+      if (e.method === "Network.loadingFailed" && /^(Fetch|XHR)$/.test(q.type || ""))
+        out.push(q.type + ":" + String(this.req.get(q.requestId) || "?").slice(0, 64) +
           "(" + (q.errorText || q.reason || "?") + ")");
     }
     return out;
@@ -661,17 +668,17 @@ function selftest() {
       { ours: false, risk: false, unknown: true }],
   ];
   const evCases = [
-    ["事件分档 L（零新面＋那一趟有取数没回数 ⇒ 必须读成 feeder 断，不能读成本站没开）",
+    ["事件分档 L（零新面＋那一趟有取数没回数 ⇒ 必须读成取数没回数，不能读成本站没开）",
       { rows: [], fired: 3, unread: [], feeds: ["Fetch:https://x.algolia.net/1/query(net::ERR_FAILED)"] },
-      "feeder 断"],
+      "取数没回数"],
     ["事件分档 M（零新面、取数全回数、触发器也发出去了 ⇒ 这才叫本站没开）",
       { rows: [], fired: 3, unread: [], feeds: [] }, "本站没开"],
     ["事件分档 N（有面 ⇒ 这一格不开火，读到数的站不能被分档）",
       { rows: [{ navigated: false }], fired: 3, unread: [], feeds: ["Fetch:?"] }, ""],
     ["事件分档 O（一格触发器都没发出去 ⇒ 不能读成本站没开）",
       { rows: [], fired: 0, unread: [], feeds: [] }, "没试到触发器"],
-    ["事件分档 P（取数没回数优先于没读到：两个都在时按 feeder 断办）",
-      { rows: [], fired: 2, unread: ["key:?"], feeds: ["XHR:?(err)"] }, "feeder 断"],
+    ["事件分档 P（取数没回数优先于没读到：两个都在时按取数没回数办）",
+      { rows: [], fired: 2, unread: ["key:?"], feeds: ["XHR:?(err)"] }, "取数没回数"],
   ];
   let bad = 0;
   for (const [name, rs, want] of covCases) {
@@ -693,7 +700,7 @@ function selftest() {
     if (got !== want) bad++;
     console.log(`  ${got === want ? "√" : "×"} ${name}：读到「${got || "不分档"}」（要「${want || "不分档"}」）`);
   }
-  console.log("  读法（事件分档）：L 不开火＝把断了的取数通道读成「这站没有浮层」；M 开了火＝真没开的站被推给通道；" +
+  console.log("  读法（事件分档）：L 不开火＝把没回数的取数通道读成「这站没有浮层」；M 开了火＝真没开的站被推给通道；" +
     "N 开了火＝明明读到面的站也被贴分档；O 开了火＝事件根本没发出去却判「本站没开」；" +
     "P 不开火＝两种缺格同时在场时丢了更硬的那一个。");
   console.log(`  读法：A 不开火＝glass 那位断了；B 不开火＝"漏判"这一格结构上永远不红，` +
@@ -707,9 +714,11 @@ function selftest() {
 }
 
 // 事件档「零新面」的分档：读到面就不分档；没面时分四种，读的那一格不许在「没回数」和「没有」之间换。
+// 档名叫「取数没回数」不叫「feeder 断」：mdn 那一跑点名的三跳里 `pong/get` 是站家的统计脚本，
+// 只有 `search-index.json` 看着像浮层的 feeder——"这一跳断掉了浮层"是因果主张，这把尺量不出来。
 function eventBucket(r) {
   if ((r.rows || []).some((x) => !x.navigated)) return "";
-  if ((r.feeds || []).length) return "feeder 断";
+  if ((r.feeds || []).length) return "取数没回数";
   if (!r.fired) return "没试到触发器";
   if ((r.unread || []).length) return "没读到";
   return "本站没开";
@@ -730,8 +739,8 @@ function printSite(r) {
   if (!real.length) {
     const bk = eventBucket(r);
     console.log("  真事件之后：没有新的 fixed 面｜这一格按「" + bk + "」办" +
-      (bk === "feeder 断" ? "（浮层内容靠的那一跳没回数：" + r.feeds.slice(0, 3).join(" / ") +
-        "）——不算「这站没有浮层」" : "") +
+      (bk === "取数没回数" ? "（这一趟有取数没回数：" + r.feeds.slice(0, 3).join(" / ") +
+        "）——哪一跳是浮层的 feeder 没判，但也不算「这站没有浮层」" : "") +
       (nav.length ? `（有 ${nav.length} 次点了跳走）` : "") +
       (r.unread.length ? `（另有 ${r.unread.length} 次没读到，见上一行）` : ""));
   }
