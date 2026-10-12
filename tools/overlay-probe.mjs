@@ -575,14 +575,17 @@ async function probeSite(c, base, tag, url, probe) {
       console.error(`S4B ${tag} ${t.label} ${JSON.stringify(await s4bWitness(c))}`);
     }
     const fresh = appeared(was, now);
-    if (fresh.length && SHOT_DIR) {
+    // 语义通道的新面（含 absolute 的下拉菜单／原生 dialog）也要出图：
+    // 只有 fixed 那一格能拍的话，[语义] 那一栏的读数就永远没有像素证人。
+    const semFresh = ovs.filter((o) => !wasOv.has(overlayKey(o)));
+    if ((fresh.length || semFresh.length) && SHOT_DIR) {
       // 出图只是取证，不参与判定：判据仍然读 DOM，图给人看
       try {
         mkdirSync(SHOT_DIR, { recursive: true });
         const f = join(SHOT_DIR, `${tag}__${t.label.replace(/[^\w.-]+/g, "_")}.png`);
         const s = await c.cmd("Page.captureScreenshot", { format: "png" });
         writeFileSync(f, Buffer.from(s.data, "base64"));
-        console.error(`SHOT ${f}（新面 ${fresh.length} 块）`);
+        console.error(`SHOT ${f}（新面 fixed ${fresh.length}／语义 ${semFresh.length} 块）`);
       } catch (e) { console.error(`SHOT FAIL ${tag} ${t.label}：${e.message}`); }
     }
     if (fresh.length) {
@@ -602,8 +605,7 @@ async function probeSite(c, base, tag, url, probe) {
     for (const f of fresh) rows.push({ via: t.label, kind: "fixed", ...f, ...classify(f) });
     // 同一格的真事件，两条通道各报一次：fixed 那一格 GLASS_PROBE 看得见，
     // 语义浮层这一格（含 absolute 的原生 dialog）只有 overlayScan 看得见。
-    for (const o of ovs) if (!wasOv.has(overlayKey(o)))
-      rows.push({ via: t.label, kind: "语义", ...o, ...classify(o) });
+    for (const o of semFresh) rows.push({ via: t.label, kind: "语义", ...o, ...classify(o) });
     try { await t.close(c); } catch (e) { /* 关不掉就带着它走下一格 */ }
     await sleep(400);
     // 收场只重读语义那一格（它便宜）；[fixed] 那一格由下一轮开头的 was 现读
