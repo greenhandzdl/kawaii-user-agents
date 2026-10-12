@@ -516,6 +516,21 @@ async function probeSite(c, base, tag, url, probe) {
     if (!fired) continue;
     if (!now) continue;   // 这一格没读到，不算"没出现浮层"
 
+    // #73：「真事件之后没有新的面」有两种形状——站点根本没开，和开了但这把尺子看不见
+    // （appeared() 那道 pos !== "fixed" 把 absolute 的原生 dialog 按构造筛掉了）。
+    // 这一行不问玻璃、不问对比，只点名原生 <dialog> 此刻开没开、走没走 showModal、
+    // JS 有没有往里面填子节点——把"探针外"这个说法换成一个能复跑的读数。
+    if (process.env.KS_OPEN_WITNESS === "1") {
+      const ow = await c.value(`(function(){
+        var d = [].slice.call(document.querySelectorAll('dialog'));
+        return JSON.stringify(d.map(function (x) {
+          return { label: (x.getAttribute('aria-label') || '').slice(0, 32),
+                   open: !!x.open, modal: x.matches(':modal'), kids: x.querySelectorAll('*').length };
+        }));
+      })()`);
+      console.error(`OPEN ${tag} ${t.label} ${ow}`);
+    }
+
     // 页址读回来是 "?" 这个占位（lightFaces 的 `|| "?"`）＝上下文没了或求值超时，
     // 这一格既不能印成"点了跳走"（把链路断说成站点行为），也不能算进"没有新面"
     // （把零证据说成零浮层）。2026-10-06 github-home 那跑就是被这条冒充成"2 次跳走"的。
